@@ -1,0 +1,192 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #f8f8f6;
+  --panel: #ffffff;
+  --text: #161616;
+  --muted: #737373;
+  --line: #dfdfdb;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  min-height: 100vh;
+  color: var(--text);
+  font-family: "Inter", "PingFang SC", "Hiragino Sans GB", sans-serif;
+  background:
+    radial-gradient(1200px 700px at 95% -20%, #efefea 0%, transparent 68%),
+    radial-gradient(900px 380px at -5% 100%, #f0f0eb 0%, transparent 65%),
+    var(--bg);
+  letter-spacing: -0.01em;
+  transition:
+    background-color 220ms ease,
+    color 220ms ease;
+}
+
+* {
+  box-sizing: border-box;
+  border-color: var(--line);
+}
+
+.section-space {
+  padding-top: 4.5rem;
+  padding-bottom: 4.5rem;
+}
+
+.eyebrow {
+  font-size: 0.75rem;
+  letter-spacing: 0.26em;
+  color: var(--muted);
+}
+
+.section-title {
+  font-size: clamp(1.6rem, 2.5vw, 2.2rem);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.section-copy {
+  margin-top: 1.75rem;
+  max-width: 44rem;
+  font-size: 1rem;
+  line-height: 2;
+  color: var(--muted);
+}
+
+@keyframes riseIn {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.motion-fade {
+  animation: riseIn 520ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+.motion-card {
+  transition:
+    transform 260ms cubic-bezier(0.2, 0.7, 0.2, 1),
+    box-shadow 260ms ease,
+    border-color 260ms ease;
+}
+
+.motion-card:hover {
+  transform: translateY(-2px) scale(1.012);
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.09);
+}
+
+.project-detail-collapsed {
+  max-height: 0;
+  overflow: hidden;
+  opacity: 0;
+  transition:
+    max-height 300ms ease,
+    opacity 220ms ease;
+}
+
+.project-detail-expanded {
+  max-height: 480px;
+  overflow: hidden;
+  opacity: 1;
+  transition:
+    max-height 360ms ease,
+    opacity 260ms ease;
+}
+
+.project-media-frame {
+  transition: transform 260ms cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+.project-media-frame:hover {
+  transform: scale(1.015);
+}
+
+.project-timeline-card {
+  backdrop-filter: blur(1px);
+}
+
+.editor-jump-highlight {
+  box-shadow: 0 0 0 2px rgba(122, 145, 247, 0.42);
+  border-color: rgba(122, 145, 247, 0.7);
+  transition:
+    box-shadow 220ms ease,
+    border-color 220ms ease;
+}
+
+.timeline-axis {
+  min-height: 100%;
+}
+
+.timeline-link {
+  border-left-color: color-mix(in srgb, var(--line) 78%, #b8b8b8 22%);
+}
+
+.timeline-dot {
+  z-index: 1;
+  transition:
+    border-color 220ms ease,
+    box-shadow 220ms ease,
+    transform 220ms ease;
+}
+
+.timeline-dot::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 9999px;
+  background: rgba(83, 115, 255, 0.24);
+  transform: translate(-50%, -50%) scale(0.6);
+  opacity: 0;
+  transition:
+    opacity 220ms ease,
+    transform 220ms ease;
+  pointer-events: none;
+}
+
+.timeline-item:hover .timeline-dot::after,
+.timeline-item:focus-within .timeline-dot::after {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+}
+
+.timeline-item:hover .timeline-dot,
+.timeline-item:focus-within .timeline-dot {
+  border-color: #7a91f7;
+  box-shadow: 0 0 0 2px rgba(122, 145, 247, 0.14);
+}
+
+.reveal {
+  opacity: 0;
+  transform: translateY(22px);
+  transition:
+    opacity 700ms ease,
+    transform 700ms cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: opacity, transform;
+}
+
+.reveal-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal,
+  .reveal-visible {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}

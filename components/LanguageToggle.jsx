@@ -1,0 +1,24 @@
+export default function LanguageToggle({ lang, onChange }) {
+  return (
+    <div className="flex items-center gap-2 rounded-full border bg-[var(--panel)] p-1">
+      <button
+        type="button"
+        onClick={() => onChange("zh")}
+        className={`rounded-full px-3 py-1.5 text-xs tracking-[0.08em] transition ${
+          lang === "zh" ? "bg-[var(--text)] text-[var(--bg)]" : "text-[var(--muted)]"
+        }`}
+      >
+        Chinese
+      </button>
+      <button
+        type="button"
+        onClick={() => onChange("en")}
+        className={`rounded-full px-3 py-1.5 text-xs tracking-[0.08em] transition ${
+          lang === "en" ? "bg-[var(--text)] text-[var(--bg)]" : "text-[var(--muted)]"
+        }`}
+      >
+        English
+      </button>
+    </div>
+  );
+}
