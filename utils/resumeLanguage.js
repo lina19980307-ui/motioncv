@@ -296,6 +296,13 @@ export function getResumeInLanguage(data, lang) {
     awards: translateAwards(data.awards),
     projects: translateProjects(data.projects),
     projectItems: translateProjectItems(data.projectItems),
+    profilePosition: translateShortLabel(data.profilePosition || "", data.profilePosition || ""),
+    profileWorkYears: translateShortLabel(data.profileWorkYears || "", data.profileWorkYears || ""),
+    profileAge: data.profileAge || "",
+    profilePhone: data.profilePhone || "",
+    profileEmail: data.profileEmail || data.email || "",
+    profileExtraTitle: translateShortLabel(data.profileExtraTitle || "", data.profileExtraTitle || ""),
+    profileExtraValue: translateSentence(data.profileExtraValue || "", data.profileExtraValue || "").replace(/[.]$/, ""),
     customSections: translateCustomSections(data.customSections),
   };
 }

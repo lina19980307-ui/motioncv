@@ -37,9 +37,13 @@ const starter = {
       media: null,
     },
   ],
-  email: "hello@motioncv.design",
-  github: "https://github.com/motioncv",
-  linkedin: "https://linkedin.com/in/motioncv",
+  profilePosition: "电商设计",
+  profileWorkYears: "4年+",
+  profileAge: "1999.04",
+  profilePhone: "13433863697（同微信）",
+  profileEmail: "hello@motioncv.design",
+  profileExtraTitle: "CUSTOM",
+  profileExtraValue: "可填写你希望展示的其他补充信息",
   mediaItems: [],
   customSections: [],
 };
@@ -102,6 +106,7 @@ function getInitialDraft() {
     const saved = JSON.parse(raw);
     if (!saved || typeof saved !== "object") return starter;
     const merged = { ...starter, ...saved };
+    if (!merged.profileEmail && merged.email) merged.profileEmail = merged.email;
     if (!Array.isArray(merged.projectItems) || merged.projectItems.length === 0) {
       const migrated = migrateLegacyProjects(merged.projects);
       merged.projectItems = migrated.length ? migrated : starter.projectItems;
@@ -551,7 +556,6 @@ export default function Home() {
     awards: "edit-awards",
     projects: "edit-projects",
     customSections: "edit-custom",
-    contact: "edit-contact",
   };
 
   const jumpToEditorSection = (section) => {
@@ -601,6 +605,36 @@ export default function Home() {
             <label id="edit-about" className={editorAnchorClass("edit-about", "mt-4 block text-sm text-[var(--muted)]")}>
               自我介绍
               <textarea name="about" value={formData.about} onChange={onFieldChange} rows={4} className="mt-2 w-full rounded-xl border bg-transparent px-3 py-2 outline-none" />
+            </label>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              <label className="block text-sm text-[var(--muted)]">
+                职业（POSITION）
+                <input name="profilePosition" value={formData.profilePosition} onChange={onFieldChange} className="mt-2 w-full rounded-xl border bg-transparent px-3 py-2 outline-none" />
+              </label>
+              <label className="block text-sm text-[var(--muted)]">
+                工作时长（TIME）
+                <input name="profileWorkYears" value={formData.profileWorkYears} onChange={onFieldChange} className="mt-2 w-full rounded-xl border bg-transparent px-3 py-2 outline-none" />
+              </label>
+              <label className="block text-sm text-[var(--muted)]">
+                年龄（AGE）
+                <input name="profileAge" value={formData.profileAge} onChange={onFieldChange} className="mt-2 w-full rounded-xl border bg-transparent px-3 py-2 outline-none" />
+              </label>
+              <label className="block text-sm text-[var(--muted)]">
+                电话（TEL）
+                <input name="profilePhone" value={formData.profilePhone} onChange={onFieldChange} className="mt-2 w-full rounded-xl border bg-transparent px-3 py-2 outline-none" />
+              </label>
+              <label className="block text-sm text-[var(--muted)]">
+                邮箱（EMAIL）
+                <input name="profileEmail" value={formData.profileEmail} onChange={onFieldChange} className="mt-2 w-full rounded-xl border bg-transparent px-3 py-2 outline-none" />
+              </label>
+              <label className="block text-sm text-[var(--muted)]">
+                自定义标题
+                <input name="profileExtraTitle" value={formData.profileExtraTitle} onChange={onFieldChange} className="mt-2 w-full rounded-xl border bg-transparent px-3 py-2 outline-none" />
+              </label>
+            </div>
+            <label className="mt-3 block text-sm text-[var(--muted)]">
+              自定义内容
+              <input name="profileExtraValue" value={formData.profileExtraValue} onChange={onFieldChange} className="mt-2 w-full rounded-xl border bg-transparent px-3 py-2 outline-none" />
             </label>
             <label id="edit-experiences" className={editorAnchorClass("edit-experiences", "mt-4 block text-sm text-[var(--muted)]")}>
               工作经历（每行：时间 | 职位 | 公司 | 描述）
@@ -739,19 +773,6 @@ export default function Home() {
                 ))}
               </div>
             </div>
-            <label id="edit-contact" className={editorAnchorClass("edit-contact", "mt-4 block text-sm text-[var(--muted)]")}>
-              邮箱
-              <input name="email" value={formData.email} onChange={onFieldChange} className="mt-2 w-full rounded-xl border bg-transparent px-3 py-2 outline-none" />
-            </label>
-            <label className="mt-4 block text-sm text-[var(--muted)]">
-              GitHub
-              <input name="github" value={formData.github} onChange={onFieldChange} className="mt-2 w-full rounded-xl border bg-transparent px-3 py-2 outline-none" />
-            </label>
-            <label className="mt-4 block text-sm text-[var(--muted)]">
-              LinkedIn
-              <input name="linkedin" value={formData.linkedin} onChange={onFieldChange} className="mt-2 w-full rounded-xl border bg-transparent px-3 py-2 outline-none" />
-            </label>
-
             <div id="edit-custom" className={editorAnchorClass("edit-custom", "mt-4 rounded-xl border p-3")}>
               <p className="text-sm text-[var(--muted)]">顶部照片/视频（最多 {MAX_MAIN_MEDIA} 个）</p>
               <div className="mt-3 flex flex-wrap gap-2">

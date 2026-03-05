@@ -1,5 +1,5 @@
 import Image from "next/image";
-import { useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { parseItems } from "../utils/resumeTransform";
 
 function splitSkills(text = "") {
@@ -29,7 +29,25 @@ function ChevronIcon({ expanded }) {
   );
 }
 
-export default function ResumeWebsite({ data, lang = "zh", onSectionNavigate }) {
+function buildHeroArcMedia(items, count = 5) {
+  if (!Array.isArray(items) || items.length === 0) return [];
+  return Array.from({ length: count }, (_, index) => {
+    const source = items[index % items.length];
+    return {
+      ...source,
+      _arcId: `arc-${index}`,
+    };
+  });
+}
+
+export default function ResumeWebsite({
+  data,
+  lang = "zh",
+  onSectionNavigate,
+  sectionIdPrefix = "",
+  centeredSectionTitles = false,
+  heroFullscreen = false,
+}) {
   const experiences = parseItems(data.experiences, ["period", "role", "company", "detail"]);
   const awards = parseItems(data.awards, ["period", "title", "issuer", "detail"]);
   const fallbackProjects = parseItems(data.projects, ["name", "detail"]);
@@ -44,7 +62,11 @@ export default function ResumeWebsite({ data, lang = "zh", onSectionNavigate }) 
         media: null,
       }));
   const skills = splitSkills(data.skills);
-  const mediaItems = Array.isArray(data.mediaItems) ? data.mediaItems.slice(0, 6) : [];
+  const mediaItems = useMemo(
+    () => (Array.isArray(data.mediaItems) ? data.mediaItems.slice(0, 6) : []),
+    [data.mediaItems]
+  );
+  const aboutImage = mediaItems.find((item) => item.type === "image");
   const customSections = Array.isArray(data.customSections) ? data.customSections : [];
 
   const labels =
@@ -55,7 +77,6 @@ export default function ResumeWebsite({ data, lang = "zh", onSectionNavigate }) 
           skills: "Skills",
           awards: "Awards & Honors",
           projects: "Projects",
-          contact: "Contact",
           noExp: "No experience added yet.",
           noProject: "No projects added yet.",
           noAwards: "No awards added yet.",
@@ -63,6 +84,11 @@ export default function ResumeWebsite({ data, lang = "zh", onSectionNavigate }) 
           intro: "Introduce yourself here.",
           role: "Role",
           project: "Project",
+          letsTalk: "Let's Talk",
+          send: "Send",
+          namePlaceholder: "Your Name",
+          emailPlaceholder: "Email Address",
+          messagePlaceholder: "Message",
         }
       : {
           about: "关于我",
@@ -70,7 +96,6 @@ export default function ResumeWebsite({ data, lang = "zh", onSectionNavigate }) 
           skills: "技能",
           awards: "奖项与荣誉",
           projects: "项目经历",
-          contact: "联系方式",
           noExp: "暂未添加工作经历。",
           noProject: "暂未添加项目。",
           noAwards: "暂未添加奖项与荣誉。",
@@ -78,13 +103,23 @@ export default function ResumeWebsite({ data, lang = "zh", onSectionNavigate }) 
           intro: "请填写自我介绍。",
           role: "职位",
           project: "项目",
+          letsTalk: "联系我",
+          send: "发送",
+          namePlaceholder: "你的名字",
+          emailPlaceholder: "邮箱地址",
+          messagePlaceholder: "留言内容",
         };
 
   const [expandedProjectMap, setExpandedProjectMap] = useState({});
   const [activeMediaIndex, setActiveMediaIndex] = useState(0);
   const [hoveredMediaIndex, setHoveredMediaIndex] = useState(null);
+  const [heroArcAnim, setHeroArcAnim] = useState({ step: 0, phase: 0, flipping: false });
+  const [talkName, setTalkName] = useState("");
+  const [talkEmail, setTalkEmail] = useState("");
+  const [talkMessage, setTalkMessage] = useState("");
   const mediaTrackRef = useRef(null);
   const canJumpToEditor = typeof onSectionNavigate === "function";
+  const makeId = (key) => (sectionIdPrefix ? `${sectionIdPrefix}-${key}` : undefined);
 
   const jumpToEditor = (section) => {
     if (!canJumpToEditor) return;
@@ -113,16 +148,146 @@ export default function ResumeWebsite({ data, lang = "zh", onSectionNavigate }) 
     setActiveMediaIndex(nextIndex);
   };
 
+  const onSendMessage = (event) => {
+    event.preventDefault();
+    const receiver = data.profileEmail || data.email || "";
+    if (!receiver) return;
+    const subject = `${talkName || (lang === "en" ? "Website Visitor" : "网站访客")} - ${lang === "en" ? "Portfolio Contact" : "网站联系"}`;
+    const body = [
+      `${lang === "en" ? "Name" : "姓名"}: ${talkName || "-"}`,
+      `${lang === "en" ? "Email" : "邮箱"}: ${talkEmail || "-"}`,
+      "",
+      `${lang === "en" ? "Message" : "留言"}:`,
+      talkMessage || "-",
+    ].join("\n");
+    window.location.href = `mailto:${encodeURIComponent(receiver)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  };
+
+  const renderSectionTitle = (title) => {
+    if (!centeredSectionTitles) {
+      return <h2 className="section-title">{title}</h2>;
+    }
+    return <h2 className="section-title text-center">{title}</h2>;
+  };
+
+  const profileRows = [
+    { label: "POSITION", value: data.profilePosition || "" },
+    { label: "TIME", value: data.profileWorkYears || "" },
+    { label: "AGE", value: data.profileAge || "" },
+    { label: "TEL", value: data.profilePhone || "" },
+    { label: "EMAIL", value: data.profileEmail || data.email || "" },
+    { label: (data.profileExtraTitle || "").toUpperCase(), value: data.profileExtraValue || "" },
+  ].filter((row) => row.label && row.value);
+  const heroName = data.name || "Your Name";
+  const heroTitle = lang === "en" ? `Hi, I'm ${heroName}` : `Hi, I'm ${heroName}`;
+  const heroArcMedia = useMemo(() => buildHeroArcMedia(mediaItems, 6), [mediaItems]);
+  const heroArcLayout = useMemo(() => {
+    if (!heroArcMedia.length) return [];
+    const total = heroArcMedia.length;
+    const shift = heroArcAnim.step + heroArcAnim.phase;
+    return heroArcMedia.map((item, index) => {
+      let relative = index - shift;
+      while (relative < -3.1) relative += total;
+      while (relative > 3.1) relative -= total;
+      const absRelative = Math.abs(relative);
+      const x = relative * 242;
+      const y = -136 + Math.pow(absRelative, 2) * 30;
+      const scale = Math.max(0.74, 1.08 - absRelative * 0.19);
+      const rotate = relative * 11;
+      const opacity =
+        absRelative > 2.25
+          ? Math.max(0, 0.6 - (absRelative - 2.25) * 1.35)
+          : Math.max(0.6, 1 - absRelative * 0.18);
+      const zIndex = Math.round(120 - absRelative * 36);
+      return {
+        ...item,
+        _layout: { x, y, scale, rotate, opacity, zIndex, absRelative },
+      };
+    });
+  }, [heroArcMedia, heroArcAnim.step, heroArcAnim.phase]);
+
+  useEffect(() => {
+    if (!heroFullscreen || heroArcMedia.length === 0) return undefined;
+    let rafId = 0;
+    let lastPaint = 0;
+    const moveMs = 2400;
+    const flipHoldMs = 1000;
+    const cycleMs = moveMs + flipHoldMs;
+    const start = performance.now();
+    const update = (now) => {
+      if (now - lastPaint >= 40) {
+        const elapsedMs = now - start;
+        const cycleIndex = Math.floor(elapsedMs / cycleMs);
+        const cycleElapsed = elapsedMs % cycleMs;
+        if (cycleElapsed < moveMs) {
+          setHeroArcAnim({
+            step: cycleIndex % heroArcMedia.length,
+            phase: cycleElapsed / moveMs,
+            flipping: false,
+          });
+        } else {
+          setHeroArcAnim({
+            step: cycleIndex % heroArcMedia.length,
+            phase: 1,
+            flipping: true,
+          });
+        }
+        lastPaint = now;
+      }
+      rafId = window.requestAnimationFrame(update);
+    };
+    rafId = window.requestAnimationFrame(update);
+    return () => window.cancelAnimationFrame(rafId);
+  }, [heroFullscreen, heroArcMedia.length]);
+
   return (
-    <section className="rounded-2xl border bg-[var(--panel)] p-6 md:p-10 motion-fade">
+    <section className="p-6 md:p-10 motion-fade">
       <header
-        className={`border-b pb-10 ${getJumpableClass()}`}
+        id={makeId("home")}
+        className={`${heroFullscreen ? "relative flex min-h-[86vh] flex-col items-center justify-center overflow-hidden pb-0 text-center" : "pb-10"} ${getJumpableClass()}`}
         onClick={() => jumpToEditor("basic")}
       >
-        <h1 className="text-5xl font-semibold tracking-tight md:text-7xl">{data.name || "Your Name"}</h1>
-        <p className="mt-4 text-lg text-[var(--muted)]">{data.tagline || labels.tagline}</p>
+        {heroFullscreen && heroArcLayout.length > 0 && (
+          <div className="hero-arc-stage pointer-events-none absolute inset-0 hidden md:block">
+            {heroArcLayout.map((item) => {
+              return (
+                <div
+                  key={item._arcId}
+                  className={`hero-arc-card ${heroArcAnim.flipping ? "hero-arc-card--flip-all" : ""}`}
+                  style={{
+                    transform: `translate3d(${item._layout.x}px, ${item._layout.y}px, 0) scale(${item._layout.scale}) rotate(${item._layout.rotate}deg)`,
+                    opacity: item._layout.opacity,
+                    zIndex: item._layout.zIndex,
+                  }}
+                >
+                  <div className="hero-arc-media">
+                    {item.type === "image" ? (
+                      <Image
+                        src={item.url}
+                        alt={item.name || "hero media"}
+                        fill
+                        sizes="150px"
+                        unoptimized
+                        className="hero-arc-media-inner"
+                      />
+                    ) : (
+                      <video autoPlay loop muted playsInline className="hero-arc-media-inner">
+                        <source src={item.url} />
+                      </video>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
 
-        {mediaItems.length > 0 && (
+        <h1 className={`${heroFullscreen ? "max-w-4xl text-5xl font-semibold tracking-tight md:text-7xl" : "text-5xl font-semibold tracking-tight md:text-7xl"}`}>
+          {heroFullscreen ? heroTitle : heroName}
+        </h1>
+        <p className="mt-4 text-lg font-light tracking-[0.01em] text-[var(--muted)]">{data.tagline || labels.tagline}</p>
+
+        {!heroFullscreen && mediaItems.length > 0 && (
           <div className="mt-8" onClick={(event) => event.stopPropagation()}>
             <div className="relative">
               <div
@@ -149,7 +314,7 @@ export default function ResumeWebsite({ data, lang = "zh", onSectionNavigate }) 
                     <article
                       key={`${item.type}-${index}`}
                       data-media-card="true"
-                      className={`motion-card min-w-[240px] md:min-w-[320px] max-w-[360px] flex-1 snap-center overflow-hidden rounded-xl border bg-[var(--bg)] shadow-none transition-opacity duration-500 hover:shadow-none ${emphasisClass}`}
+                      className={`motion-card soft-panel min-w-[240px] md:min-w-[320px] max-w-[360px] flex-1 snap-center overflow-hidden rounded-xl shadow-none transition-opacity duration-500 hover:shadow-none ${emphasisClass}`}
                       onMouseEnter={() => setHoveredMediaIndex(index)}
                       onMouseLeave={() => setHoveredMediaIndex(null)}
                       style={{
@@ -202,34 +367,65 @@ export default function ResumeWebsite({ data, lang = "zh", onSectionNavigate }) 
       </header>
 
       <div
-        className={`section-space border-b motion-fade ${getJumpableClass()}`}
+        id={makeId("about")}
+        className={`section-space motion-fade ${getJumpableClass()}`}
         onClick={() => jumpToEditor("about")}
       >
-        <h2 className="section-title">{labels.about}</h2>
-        <p className="section-copy mt-6">{data.about || labels.intro}</p>
-      </div>
+        {renderSectionTitle(labels.about)}
+        <div className="mt-7 grid gap-8 md:grid-cols-[260px_1fr] md:items-center">
+          <div className="mx-auto w-full max-w-[260px]">
+            <div className="soft-panel overflow-hidden rounded-3xl p-2">
+              {aboutImage ? (
+                <Image
+                  src={aboutImage.url}
+                  alt={aboutImage.name || "profile"}
+                  width={480}
+                  height={520}
+                  unoptimized
+                  className="h-[300px] w-full rounded-2xl object-cover"
+                />
+              ) : (
+                <div className="flex h-[300px] items-center justify-center rounded-2xl bg-[var(--panel)] text-sm text-[var(--muted)]">
+                  Portrait
+                </div>
+              )}
+            </div>
+          </div>
 
-      {skills.length > 0 && (
-        <div
-          className={`section-space border-b motion-fade ${getJumpableClass()}`}
-          onClick={() => jumpToEditor("skills")}
-        >
-          <h2 className="section-title">{labels.skills}</h2>
-          <div className="mt-6 flex flex-wrap gap-3">
-            {skills.map((skill, index) => (
-              <span key={`${skill}-${index}`} className="motion-card rounded-full border bg-[var(--bg)] px-4 py-2 text-sm text-[var(--muted)]">
-                {skill}
-              </span>
-            ))}
+          <div className="self-center">
+            {profileRows.length > 0 && (
+              <div id={makeId("profile")} className="mt-0 grid gap-3 text-[1.02rem] text-[var(--text)]">
+                {profileRows.map((row) => (
+                  <p key={row.label} id={row.label === "EMAIL" ? makeId("email") : undefined} className="tracking-[0.01em]">
+                    <span className="mr-2 font-semibold">{row.label}:</span>
+                    <span className="text-[var(--muted)]">{row.value}</span>
+                  </p>
+                ))}
+              </div>
+            )}
+
+            {skills.length > 0 && (
+              <div id={makeId("skills")} className="mt-8">
+                <h3 className="text-2xl font-semibold">{labels.skills}</h3>
+                <div className="mt-4 flex flex-wrap gap-3">
+                  {skills.map((skill, index) => (
+                    <span key={`${skill}-${index}`} className="motion-card soft-pill rounded-full px-4 py-2 text-sm text-[var(--muted)]">
+                      {skill}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
-      )}
+      </div>
 
       <div
-        className={`section-space border-b motion-fade ${getJumpableClass()}`}
+        id={makeId("experience")}
+        className={`section-space motion-fade ${getJumpableClass()}`}
         onClick={() => jumpToEditor("experiences")}
       >
-        <h2 className="section-title">{labels.exp}</h2>
+        {renderSectionTitle(labels.exp)}
         {experiences.length > 0 ? (
           <div className="relative mt-8 pl-0">
             <div className="space-y-8">
@@ -250,7 +446,7 @@ export default function ResumeWebsite({ data, lang = "zh", onSectionNavigate }) 
                         {item.period}
                       </p>
                     )}
-                    <article className="timeline-card motion-card rounded-xl border bg-[var(--bg)] p-5" tabIndex={0}>
+                    <article className="timeline-card motion-card soft-panel rounded-xl p-5" tabIndex={0}>
                       <h3 className="text-xl font-medium">
                         {item.role || labels.role} {item.company ? `· ${item.company}` : ""}
                       </h3>
@@ -268,10 +464,11 @@ export default function ResumeWebsite({ data, lang = "zh", onSectionNavigate }) 
 
       {awards.length > 0 && (
         <div
-          className={`section-space border-b motion-fade ${getJumpableClass()}`}
+          id={makeId("awards")}
+          className={`section-space motion-fade ${getJumpableClass()}`}
           onClick={() => jumpToEditor("awards")}
         >
-          <h2 className="section-title">{labels.awards}</h2>
+          {renderSectionTitle(labels.awards)}
           <div className="relative mt-8 pl-0">
             <div className="space-y-8">
               {awards.map((item, index) => (
@@ -291,7 +488,7 @@ export default function ResumeWebsite({ data, lang = "zh", onSectionNavigate }) 
                         {item.period}
                       </p>
                     )}
-                    <article className="timeline-card motion-card rounded-xl border bg-[var(--bg)] p-5" tabIndex={0}>
+                    <article className="timeline-card motion-card soft-panel rounded-xl p-5" tabIndex={0}>
                       <h3 className="text-xl font-medium">{item.title}</h3>
                       <p className="mt-1 text-sm text-[var(--muted)]">{item.issuer}</p>
                       <p className="mt-2 text-[var(--muted)]">{item.detail}</p>
@@ -305,10 +502,11 @@ export default function ResumeWebsite({ data, lang = "zh", onSectionNavigate }) 
       )}
 
       <div
-        className={`section-space border-b motion-fade ${getJumpableClass()}`}
+        id={makeId("projects")}
+        className={`section-space motion-fade ${getJumpableClass()}`}
         onClick={() => jumpToEditor("projects")}
       >
-        <h2 className="section-title">{labels.projects}</h2>
+        {renderSectionTitle(labels.projects)}
         {projectItems.length > 0 ? (
           <div className="relative mt-8 pl-0">
             <div className="space-y-8">
@@ -331,10 +529,10 @@ export default function ResumeWebsite({ data, lang = "zh", onSectionNavigate }) 
                           {project.period}
                         </p>
                       )}
-                      <article className="project-timeline-card timeline-card relative motion-card rounded-xl border bg-[var(--bg)] p-5" tabIndex={0}>
+                      <article className="project-timeline-card timeline-card relative motion-card soft-panel rounded-xl p-5" tabIndex={0}>
                         <div className={`grid gap-4 ${project.media ? "md:grid-cols-[180px_1fr]" : "grid-cols-1"}`}>
                           {project.media && (
-                            <div className="project-media-frame h-[180px] w-[180px] self-start overflow-hidden rounded-lg border bg-[var(--panel)]">
+                            <div className="project-media-frame soft-panel h-[180px] w-[180px] self-start overflow-hidden rounded-lg">
                               {project.media.type === "image" ? (
                                 <Image
                                   src={project.media.url}
@@ -395,10 +593,11 @@ export default function ResumeWebsite({ data, lang = "zh", onSectionNavigate }) 
         .map((section, sectionIndex) => (
           <div
             key={`custom-${sectionIndex}`}
-            className={`section-space border-b motion-fade ${getJumpableClass()}`}
+            id={sectionIndex === 0 ? makeId("custom") : undefined}
+            className={`section-space motion-fade ${getJumpableClass()}`}
             onClick={() => jumpToEditor("customSections")}
           >
-            <h2 className="section-title">{section.title || (lang === "en" ? "Custom Section" : "自定义板块")}</h2>
+            {renderSectionTitle(section.title || (lang === "en" ? "Custom Section" : "自定义板块"))}
             {section.content && <p className="section-copy mt-6">{section.content}</p>}
 
             {section.mediaItems.length > 0 && (
@@ -406,7 +605,7 @@ export default function ResumeWebsite({ data, lang = "zh", onSectionNavigate }) 
                 {section.mediaItems.map((item, mediaIndex) => (
                   <article
                     key={`${item.name}-${mediaIndex}`}
-                    className="motion-card min-w-[300px] max-w-[360px] flex-1 snap-start overflow-hidden rounded-xl border bg-[var(--bg)]"
+                    className="motion-card soft-panel min-w-[300px] max-w-[360px] flex-1 snap-start overflow-hidden rounded-xl"
                   >
                     {item.type === "image" ? (
                       <Image
@@ -430,22 +629,44 @@ export default function ResumeWebsite({ data, lang = "zh", onSectionNavigate }) 
         ))}
 
       <div
-        className={`section-space pb-0 motion-fade ${getJumpableClass()}`}
-        onClick={() => jumpToEditor("contact")}
+        id={makeId("link")}
+        className={`section-space pb-4 motion-fade ${getJumpableClass()}`}
+        onClick={() => jumpToEditor("about")}
       >
-        <h2 className="section-title">{labels.contact}</h2>
-        <div className="mt-8 grid gap-3 md:max-w-2xl">
-          <a href={`mailto:${data.email}`} onClick={(event) => event.stopPropagation()} className="motion-card rounded-xl border px-4 py-3 text-[var(--muted)]">
-            Email · {data.email}
-          </a>
-          <a href={data.github} onClick={(event) => event.stopPropagation()} target="_blank" rel="noreferrer" className="motion-card rounded-xl border px-4 py-3 text-[var(--muted)]">
-            GitHub · {data.github}
-          </a>
-          <a href={data.linkedin} onClick={(event) => event.stopPropagation()} target="_blank" rel="noreferrer" className="motion-card rounded-xl border px-4 py-3 text-[var(--muted)]">
-            LinkedIn · {data.linkedin}
-          </a>
-        </div>
+        {renderSectionTitle(labels.letsTalk)}
+        <p className="mt-5 text-center text-xl tracking-[0.03em] text-[var(--muted)]">{data.profileEmail || data.email || ""}</p>
+        <form onSubmit={onSendMessage} className="mx-auto mt-7 w-full space-y-3 md:w-2/3 md:max-w-3xl" onClick={(event) => event.stopPropagation()}>
+          <div className="grid gap-3 md:grid-cols-2">
+            <input
+              value={talkName}
+              onChange={(event) => setTalkName(event.target.value)}
+              placeholder={labels.namePlaceholder}
+              className="w-full rounded-2xl border bg-transparent px-4 py-3 text-[var(--text)] outline-none placeholder:text-[var(--muted)]/75"
+            />
+            <input
+              type="email"
+              value={talkEmail}
+              onChange={(event) => setTalkEmail(event.target.value)}
+              placeholder={labels.emailPlaceholder}
+              className="w-full rounded-2xl border bg-transparent px-4 py-3 text-[var(--text)] outline-none placeholder:text-[var(--muted)]/75"
+            />
+          </div>
+          <textarea
+            value={talkMessage}
+            onChange={(event) => setTalkMessage(event.target.value)}
+            placeholder={labels.messagePlaceholder}
+            rows={5}
+            className="w-full rounded-2xl border bg-transparent px-4 py-3 text-[var(--text)] outline-none placeholder:text-[var(--muted)]/75"
+          />
+          <button
+            type="submit"
+            className="w-full rounded-2xl border bg-[var(--text)] px-4 py-3 text-sm tracking-[0.08em] text-[var(--bg)] transition hover:opacity-90"
+          >
+            {labels.send}
+          </button>
+        </form>
       </div>
+
     </section>
   );
 }
