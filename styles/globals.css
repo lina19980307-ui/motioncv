@@ -627,9 +627,9 @@ body {
   width: 100%;
   overflow: hidden;
   background:
-    radial-gradient(1200px 700px at 80% -10%, rgba(56, 66, 102, 0.3) 0%, transparent 62%),
-    radial-gradient(1000px 680px at 8% 90%, rgba(56, 76, 124, 0.2) 0%, transparent 68%),
-    linear-gradient(170deg, #06070a 0%, #050507 36%, #07080c 100%);
+    radial-gradient(1200px 760px at 92% -10%, rgba(206, 221, 246, 0.7) 0%, transparent 62%),
+    radial-gradient(980px 640px at 10% 96%, rgba(225, 232, 245, 0.82) 0%, transparent 68%),
+    linear-gradient(178deg, #f8fafc 0%, #f3f6fb 54%, #eef2f8 100%);
 }
 
 .hero-noise {
@@ -644,7 +644,7 @@ body {
   background-size:
     17px 17px,
     23px 23px;
-  opacity: 0.12;
+  opacity: 0.06;
   pointer-events: none;
 }
 
@@ -652,8 +652,8 @@ body {
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(520px 340px at 50% 58%, rgba(165, 184, 255, 0.12) 0%, transparent 70%),
-    radial-gradient(640px 460px at 50% 92%, rgba(199, 221, 255, 0.08) 0%, transparent 72%);
+    radial-gradient(520px 340px at 50% 58%, rgba(143, 164, 208, 0.1) 0%, transparent 70%),
+    radial-gradient(640px 460px at 50% 92%, rgba(183, 202, 238, 0.08) 0%, transparent 72%);
   pointer-events: none;
 }
 
@@ -665,6 +665,10 @@ body {
 .hero-canvas {
   width: 100%;
   height: 100%;
+}
+
+.share-hero-3d {
+  pointer-events: auto;
 }
 
 .hero-heading {

@@ -4,6 +4,7 @@ import { useRouter } from "next/router";
 import { useEffect, useMemo, useState } from "react";
 import LanguageToggle from "../../components/LanguageToggle";
 import ResumeWebsite from "../../components/ResumeWebsite";
+import heroSceneConfig from "../../config/heroScene";
 import { getResumeInLanguage } from "../../utils/resumeLanguage";
 import { decodeResumeData, loadResumeSnapshot } from "../../utils/shareResume";
 
@@ -260,7 +261,13 @@ export default function ResumeSharePage() {
           </section>
         ) : (
           <>
-            <ResumeWebsite data={displayData} lang={lang} sectionIdPrefix={anchorPrefix} heroFullscreen />
+            <ResumeWebsite
+              data={displayData}
+              lang={lang}
+              sectionIdPrefix={anchorPrefix}
+              heroFullscreen
+              heroModelConfig={heroSceneConfig}
+            />
             <nav className="dock-shell fixed bottom-5 left-1/2 z-50 -translate-x-1/2 rounded-[2.2rem] px-4 py-3 shadow-[0_16px_44px_rgba(28,28,28,0.14)] backdrop-blur-xl">
               <ul className="flex items-center gap-2">
                 {navItems.map((item) => (

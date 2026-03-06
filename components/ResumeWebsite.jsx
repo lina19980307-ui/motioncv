@@ -1,7 +1,10 @@
 import Image from "next/image";
+import dynamic from "next/dynamic";
 import { useEffect, useMemo, useRef, useState } from "react";
 import CardStack from "./CardStack";
 import { parseItems } from "../utils/resumeTransform";
+
+const HeroCanvas = dynamic(() => import("./hero3d/HeroCanvas"), { ssr: false });
 
 function splitSkills(text = "") {
   return text
@@ -47,6 +50,8 @@ export default function ResumeWebsite({
   onSectionNavigate,
   sectionIdPrefix = "",
   heroFullscreen = false,
+  hideTopHeader = false,
+  heroModelConfig = null,
 }) {
   const experiences = parseItems(data.experiences, ["period", "role", "company", "detail"]);
   const awards = parseItems(data.awards, ["period", "title", "issuer", "detail"]);
@@ -381,124 +386,132 @@ export default function ResumeWebsite({
       ref={rootRef}
       className={`${heroFullscreen ? "px-0 pb-10 pt-2 md:pb-12 md:pt-4" : "p-6 md:p-10"} motion-fade`}
     >
-      <header
-        id={makeId("home")}
-        data-snap-section="true"
-        data-wave-section="true"
-        className={`wave-section ${heroFullscreen ? "relative flex w-full min-h-[86vh] flex-col items-center justify-center overflow-hidden pb-0 text-center" : "pb-10"} ${getJumpableClass()}`}
-        onClick={() => jumpToEditor("basic")}
-      >
-        {heroFullscreen && heroArcLayout.length > 0 && (
-          <div className="hero-arc-stage pointer-events-none absolute inset-0 z-0 hidden md:block">
-            {heroArcLayout.map((item) => {
-              return (
-                <div
-                  key={item._arcId}
-                  className={`hero-arc-card ${heroArcAnim.flipping ? "hero-arc-card--flip-all" : ""}`}
-                  style={{
-                    transform: `translate3d(${item._layout.x}px, ${item._layout.y}px, 0) scale(${item._layout.scale}) rotate(${item._layout.rotate}deg)`,
-                    opacity: item._layout.opacity,
-                    zIndex: item._layout.zIndex,
-                  }}
-                >
-                  <div className="hero-arc-flip">
-                    <div className="hero-arc-face hero-arc-face--front">{renderHeroArcAsset(item, "front")}</div>
-                    <div className="hero-arc-face hero-arc-face--back">{renderHeroArcAsset(item, "back")}</div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        <h1
-          className={`wave-item relative z-20 ${heroFullscreen ? "max-w-4xl text-5xl font-semibold tracking-tight md:text-7xl" : "text-5xl font-semibold tracking-tight md:text-7xl"}`}
-          style={{ "--wave-delay": "0ms" }}
+      {!hideTopHeader && (
+        <header
+          id={makeId("home")}
+          data-snap-section="true"
+          data-wave-section="true"
+          className={`wave-section ${heroFullscreen ? "relative flex w-full min-h-[86vh] flex-col items-center justify-center overflow-hidden pb-0 text-center" : "pb-10"} ${getJumpableClass()}`}
+          onClick={() => jumpToEditor("basic")}
         >
-          {heroFullscreen ? heroTitle : heroName}
-        </h1>
-        <p className="wave-item relative z-20 mt-4 text-lg font-light tracking-[0.01em] text-[var(--muted)]" style={{ "--wave-delay": "120ms" }}>
-          {data.tagline || labels.tagline}
-        </p>
-
-        {!heroFullscreen && mediaItems.length > 0 && (
-          <div className="mt-8" onClick={(event) => event.stopPropagation()}>
-            <div className="relative">
-              <div
-                ref={mediaTrackRef}
-                className="flex gap-4 overflow-x-auto overflow-y-visible pb-8 pl-6 pr-3 pt-8 [scrollbar-width:none] snap-x snap-mandatory"
-              >
-                {mediaItems.map((item, index) => {
-                  const distance = Math.abs(index - effectiveActiveMediaIndex);
-                  const direction = index - effectiveActiveMediaIndex;
-                  const transformStyle =
-                    distance === 0
-                      ? "translateY(-3px) scale(1.02) rotateY(0deg)"
-                      : distance === 1
-                        ? `translateY(2px) scale(0.97) rotateY(${direction > 0 ? "-8deg" : "8deg"})`
-                        : `translateY(5px) scale(0.94) rotateY(${direction > 0 ? "-12deg" : "12deg"})`;
-                  const emphasisClass =
-                    distance === 0
-                      ? "opacity-100"
-                      : distance === 1
-                        ? "opacity-78"
-                        : "opacity-48";
-
-                  return (
-                    <article
-                      key={`${item.type}-${index}`}
-                      data-media-card="true"
-                      className={`motion-card soft-panel min-w-[240px] md:min-w-[320px] max-w-[360px] flex-1 snap-center overflow-hidden rounded-xl shadow-none transition-opacity duration-500 hover:shadow-none ${emphasisClass}`}
-                      onMouseEnter={() => setHoveredMediaIndex(index)}
-                      onMouseLeave={() => setHoveredMediaIndex(null)}
-                      style={{
-                        animationDelay: `${index * 80}ms`,
-                        boxShadow: "none",
-                        transform: transformStyle,
-                        transformStyle: "preserve-3d",
-                        transformOrigin: "center center",
-                        transition: "transform 460ms ease, opacity 460ms ease",
-                      }}
-                    >
-                      {item.type === "image" ? (
-                        <Image
-                          src={item.url}
-                          alt={item.name || "uploaded image"}
-                          width={720}
-                          height={420}
-                          unoptimized
-                          className="h-56 w-full object-cover"
-                        />
-                      ) : (
-                        <video controls className="h-56 w-full object-cover">
-                          <source src={item.url} />
-                        </video>
-                      )}
-                    </article>
-                  );
-                })}
-              </div>
-
-              {mediaItems.length > 1 && (
-                <div className="mt-2 flex justify-center gap-1.5">
-                  {mediaItems.map((_, index) => (
-                    <button
-                      key={`media-dot-${index}`}
-                      type="button"
-                      aria-label={`Go to media ${index + 1}`}
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        scrollToMedia(index);
-                      }}
-                      className={`h-1.5 rounded-full transition-all duration-300 ${index === effectiveActiveMediaIndex ? "w-6 bg-[var(--text)]" : "w-2 bg-[var(--line)]"}`}
-                    />
-                  ))}
-                </div>
-              )}
+          {heroFullscreen && heroModelConfig ? (
+            <div className="share-hero-3d absolute inset-0 z-0">
+              <HeroCanvas config={heroModelConfig} />
             </div>
-          </div>
-        )}
-      </header>
+          ) : null}
+
+          {heroFullscreen && !heroModelConfig && heroArcLayout.length > 0 && (
+            <div className="hero-arc-stage pointer-events-none absolute inset-0 z-0 hidden md:block">
+              {heroArcLayout.map((item) => {
+                return (
+                  <div
+                    key={item._arcId}
+                    className={`hero-arc-card ${heroArcAnim.flipping ? "hero-arc-card--flip-all" : ""}`}
+                    style={{
+                      transform: `translate3d(${item._layout.x}px, ${item._layout.y}px, 0) scale(${item._layout.scale}) rotate(${item._layout.rotate}deg)`,
+                      opacity: item._layout.opacity,
+                      zIndex: item._layout.zIndex,
+                    }}
+                  >
+                    <div className="hero-arc-flip">
+                      <div className="hero-arc-face hero-arc-face--front">{renderHeroArcAsset(item, "front")}</div>
+                      <div className="hero-arc-face hero-arc-face--back">{renderHeroArcAsset(item, "back")}</div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          <h1
+            className={`wave-item relative z-20 ${heroFullscreen ? "max-w-4xl text-5xl font-semibold tracking-tight md:text-7xl" : "text-5xl font-semibold tracking-tight md:text-7xl"}`}
+            style={{ "--wave-delay": "0ms" }}
+          >
+            {heroFullscreen ? heroTitle : heroName}
+          </h1>
+          <p className="wave-item relative z-20 mt-4 text-lg font-light tracking-[0.01em] text-[var(--muted)]" style={{ "--wave-delay": "120ms" }}>
+            {data.tagline || labels.tagline}
+          </p>
+
+          {!heroFullscreen && mediaItems.length > 0 && (
+            <div className="mt-8" onClick={(event) => event.stopPropagation()}>
+              <div className="relative">
+                <div
+                  ref={mediaTrackRef}
+                  className="flex gap-4 overflow-x-auto overflow-y-visible pb-8 pl-6 pr-3 pt-8 [scrollbar-width:none] snap-x snap-mandatory"
+                >
+                  {mediaItems.map((item, index) => {
+                    const distance = Math.abs(index - effectiveActiveMediaIndex);
+                    const direction = index - effectiveActiveMediaIndex;
+                    const transformStyle =
+                      distance === 0
+                        ? "translateY(-3px) scale(1.02) rotateY(0deg)"
+                        : distance === 1
+                          ? `translateY(2px) scale(0.97) rotateY(${direction > 0 ? "-8deg" : "8deg"})`
+                          : `translateY(5px) scale(0.94) rotateY(${direction > 0 ? "-12deg" : "12deg"})`;
+                    const emphasisClass =
+                      distance === 0
+                        ? "opacity-100"
+                        : distance === 1
+                          ? "opacity-78"
+                          : "opacity-48";
+
+                    return (
+                      <article
+                        key={`${item.type}-${index}`}
+                        data-media-card="true"
+                        className={`motion-card soft-panel min-w-[240px] md:min-w-[320px] max-w-[360px] flex-1 snap-center overflow-hidden rounded-xl shadow-none transition-opacity duration-500 hover:shadow-none ${emphasisClass}`}
+                        onMouseEnter={() => setHoveredMediaIndex(index)}
+                        onMouseLeave={() => setHoveredMediaIndex(null)}
+                        style={{
+                          animationDelay: `${index * 80}ms`,
+                          boxShadow: "none",
+                          transform: transformStyle,
+                          transformStyle: "preserve-3d",
+                          transformOrigin: "center center",
+                          transition: "transform 460ms ease, opacity 460ms ease",
+                        }}
+                      >
+                        {item.type === "image" ? (
+                          <Image
+                            src={item.url}
+                            alt={item.name || "uploaded image"}
+                            width={720}
+                            height={420}
+                            unoptimized
+                            className="h-56 w-full object-cover"
+                          />
+                        ) : (
+                          <video controls className="h-56 w-full object-cover">
+                            <source src={item.url} />
+                          </video>
+                        )}
+                      </article>
+                    );
+                  })}
+                </div>
+
+                {mediaItems.length > 1 && (
+                  <div className="mt-2 flex justify-center gap-1.5">
+                    {mediaItems.map((_, index) => (
+                      <button
+                        key={`media-dot-${index}`}
+                        type="button"
+                        aria-label={`Go to media ${index + 1}`}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          scrollToMedia(index);
+                        }}
+                        className={`h-1.5 rounded-full transition-all duration-300 ${index === effectiveActiveMediaIndex ? "w-6 bg-[var(--text)]" : "w-2 bg-[var(--line)]"}`}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </header>
+      )}
 
       <div
         id={makeId("about")}
