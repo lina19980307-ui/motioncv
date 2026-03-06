@@ -1,5 +1,6 @@
 import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
+import CardStack from "./CardStack";
 import { parseItems } from "../utils/resumeTransform";
 
 function splitSkills(text = "") {
@@ -45,7 +46,6 @@ export default function ResumeWebsite({
   lang = "zh",
   onSectionNavigate,
   sectionIdPrefix = "",
-  centeredSectionTitles = false,
   heroFullscreen = false,
 }) {
   const experiences = parseItems(data.experiences, ["period", "role", "company", "detail"]);
@@ -66,7 +66,10 @@ export default function ResumeWebsite({
     () => (Array.isArray(data.mediaItems) ? data.mediaItems.slice(0, 6) : []),
     [data.mediaItems]
   );
-  const aboutImage = mediaItems.find((item) => item.type === "image");
+  const aboutImage =
+    data.aboutMedia && data.aboutMedia.type === "image" && data.aboutMedia.url
+      ? data.aboutMedia
+      : mediaItems.find((item) => item.type === "image");
   const customSections = Array.isArray(data.customSections) ? data.customSections : [];
 
   const labels =
@@ -117,9 +120,14 @@ export default function ResumeWebsite({
   const [talkName, setTalkName] = useState("");
   const [talkEmail, setTalkEmail] = useState("");
   const [talkMessage, setTalkMessage] = useState("");
+  const rootRef = useRef(null);
   const mediaTrackRef = useRef(null);
+  const snapLockRef = useRef(false);
+  const snapReleaseTimerRef = useRef(null);
   const canJumpToEditor = typeof onSectionNavigate === "function";
   const makeId = (key) => (sectionIdPrefix ? `${sectionIdPrefix}-${key}` : undefined);
+  const sectionShellClass = heroFullscreen ? "section-shell" : "";
+  const customSectionShellClass = heroFullscreen ? "section-shell section-shell-custom" : "";
 
   const jumpToEditor = (section) => {
     if (!canJumpToEditor) return;
@@ -164,19 +172,35 @@ export default function ResumeWebsite({
   };
 
   const renderSectionTitle = (title) => {
-    if (!centeredSectionTitles) {
-      return <h2 className="section-title">{title}</h2>;
+    return <h2 className="section-title wave-item">{title}</h2>;
+  };
+
+  const renderHeroArcAsset = (item, side) => {
+    if (item.type === "image") {
+      return (
+        <Image
+          src={item.url}
+          alt={item.name || `hero media ${side}`}
+          fill
+          sizes="150px"
+          unoptimized
+          className="hero-arc-media-inner"
+        />
+      );
     }
-    return <h2 className="section-title text-center">{title}</h2>;
+    return (
+      <video autoPlay loop muted playsInline className="hero-arc-media-inner">
+        <source src={item.url} />
+      </video>
+    );
   };
 
   const profileRows = [
     { label: "POSITION", value: data.profilePosition || "" },
-    { label: "TIME", value: data.profileWorkYears || "" },
-    { label: "AGE", value: data.profileAge || "" },
-    { label: "TEL", value: data.profilePhone || "" },
     { label: "EMAIL", value: data.profileEmail || data.email || "" },
-    { label: (data.profileExtraTitle || "").toUpperCase(), value: data.profileExtraValue || "" },
+    { label: (data.profileCustom1Title || "").toUpperCase(), value: data.profileCustom1Value || "" },
+    { label: (data.profileCustom2Title || "").toUpperCase(), value: data.profileCustom2Value || "" },
+    { label: (data.profileCustom3Title || "").toUpperCase(), value: data.profileCustom3Value || "" },
   ].filter((row) => row.label && row.value);
   const heroName = data.name || "Your Name";
   const heroTitle = lang === "en" ? `Hi, I'm ${heroName}` : `Hi, I'm ${heroName}`;
@@ -210,10 +234,11 @@ export default function ResumeWebsite({
     if (!heroFullscreen || heroArcMedia.length === 0) return undefined;
     let rafId = 0;
     let lastPaint = 0;
-    const moveMs = 2400;
-    const flipHoldMs = 1000;
-    const cycleMs = moveMs + flipHoldMs;
+    const moveMs = 2200;
+    const flipMs = 1000;
+    const cycleMs = moveMs + flipMs;
     const start = performance.now();
+
     const update = (now) => {
       if (now - lastPaint >= 40) {
         const elapsedMs = now - start;
@@ -236,19 +261,135 @@ export default function ResumeWebsite({
       }
       rafId = window.requestAnimationFrame(update);
     };
+
     rafId = window.requestAnimationFrame(update);
-    return () => window.cancelAnimationFrame(rafId);
+    return () => {
+      window.cancelAnimationFrame(rafId);
+    };
   }, [heroFullscreen, heroArcMedia.length]);
 
+  useEffect(() => {
+    if (!heroFullscreen) return undefined;
+
+    const isEditableTarget = (target) => {
+      if (!(target instanceof Element)) return false;
+      return Boolean(target.closest("input, textarea, select, button, video, [data-allow-native-scroll='true']"));
+    };
+
+    const findScrollableAncestor = (target) => {
+      if (!(target instanceof Element)) return null;
+      let node = target;
+      while (node && node !== document.body) {
+        const style = window.getComputedStyle(node);
+        const overflowY = style.overflowY;
+        const canScroll = (overflowY === "auto" || overflowY === "scroll") && node.scrollHeight > node.clientHeight;
+        if (canScroll) return node;
+        node = node.parentElement;
+      }
+      return null;
+    };
+
+    const onWheel = (event) => {
+      if (snapLockRef.current) {
+        event.preventDefault();
+        return;
+      }
+
+      if (Math.abs(event.deltaY) < 6) return;
+      if (isEditableTarget(event.target)) return;
+
+      const innerScrollable = findScrollableAncestor(event.target);
+      if (innerScrollable) {
+        const { scrollTop, scrollHeight, clientHeight } = innerScrollable;
+        const canScrollDown = scrollTop + clientHeight < scrollHeight - 2;
+        const canScrollUp = scrollTop > 2;
+        if ((event.deltaY > 0 && canScrollDown) || (event.deltaY < 0 && canScrollUp)) {
+          return;
+        }
+      }
+
+      const root = rootRef.current;
+      if (!root) return;
+      const sections = Array.from(root.querySelectorAll("[data-snap-section='true']"));
+      if (sections.length < 2) return;
+
+      const viewportAnchor = window.innerHeight * 0.24;
+      const currentIndex = sections.reduce(
+        (best, section, index) => {
+          const distance = Math.abs(section.getBoundingClientRect().top - viewportAnchor);
+          return distance < best.distance ? { index, distance } : best;
+        },
+        { index: 0, distance: Number.POSITIVE_INFINITY }
+      ).index;
+
+      const nextIndex = event.deltaY > 0 ? Math.min(sections.length - 1, currentIndex + 1) : Math.max(0, currentIndex - 1);
+      if (nextIndex === currentIndex) {
+        event.preventDefault();
+        return;
+      }
+
+      snapLockRef.current = true;
+      event.preventDefault();
+      sections[nextIndex].scrollIntoView({ behavior: "smooth", block: "start" });
+
+      if (snapReleaseTimerRef.current) {
+        window.clearTimeout(snapReleaseTimerRef.current);
+      }
+      snapReleaseTimerRef.current = window.setTimeout(() => {
+        snapLockRef.current = false;
+      }, 620);
+    };
+
+    window.addEventListener("wheel", onWheel, { passive: false });
+    return () => {
+      window.removeEventListener("wheel", onWheel);
+      if (snapReleaseTimerRef.current) {
+        window.clearTimeout(snapReleaseTimerRef.current);
+      }
+    };
+  }, [heroFullscreen]);
+
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!root) return undefined;
+    const waveSections = Array.from(root.querySelectorAll("[data-wave-section='true']"));
+    if (!waveSections.length) return undefined;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          const section = entry.target;
+          if (entry.isIntersecting) {
+            if (section.dataset.waveVisible === "1") return;
+            section.dataset.waveVisible = "1";
+            section.classList.remove("wave-active");
+            void section.offsetWidth;
+            section.classList.add("wave-active");
+            return;
+          }
+          section.dataset.waveVisible = "0";
+          section.classList.remove("wave-active");
+        });
+      },
+      { threshold: 0.18, rootMargin: "0px 0px -12% 0px" }
+    );
+    waveSections.forEach((section) => observer.observe(section));
+    return () => observer.disconnect();
+  }, [awards.length, customSections.length, experiences.length, projectItems.length, skills.length]);
+
   return (
-    <section className="p-6 md:p-10 motion-fade">
+    <section
+      ref={rootRef}
+      className={`${heroFullscreen ? "px-0 pb-10 pt-2 md:pb-12 md:pt-4" : "p-6 md:p-10"} motion-fade`}
+    >
       <header
         id={makeId("home")}
-        className={`${heroFullscreen ? "relative flex min-h-[86vh] flex-col items-center justify-center overflow-hidden pb-0 text-center" : "pb-10"} ${getJumpableClass()}`}
+        data-snap-section="true"
+        data-wave-section="true"
+        className={`wave-section ${heroFullscreen ? "relative flex w-full min-h-[86vh] flex-col items-center justify-center overflow-hidden pb-0 text-center" : "pb-10"} ${getJumpableClass()}`}
         onClick={() => jumpToEditor("basic")}
       >
         {heroFullscreen && heroArcLayout.length > 0 && (
-          <div className="hero-arc-stage pointer-events-none absolute inset-0 hidden md:block">
+          <div className="hero-arc-stage pointer-events-none absolute inset-0 z-0 hidden md:block">
             {heroArcLayout.map((item) => {
               return (
                 <div
@@ -260,21 +401,9 @@ export default function ResumeWebsite({
                     zIndex: item._layout.zIndex,
                   }}
                 >
-                  <div className="hero-arc-media">
-                    {item.type === "image" ? (
-                      <Image
-                        src={item.url}
-                        alt={item.name || "hero media"}
-                        fill
-                        sizes="150px"
-                        unoptimized
-                        className="hero-arc-media-inner"
-                      />
-                    ) : (
-                      <video autoPlay loop muted playsInline className="hero-arc-media-inner">
-                        <source src={item.url} />
-                      </video>
-                    )}
+                  <div className="hero-arc-flip">
+                    <div className="hero-arc-face hero-arc-face--front">{renderHeroArcAsset(item, "front")}</div>
+                    <div className="hero-arc-face hero-arc-face--back">{renderHeroArcAsset(item, "back")}</div>
                   </div>
                 </div>
               );
@@ -282,10 +411,15 @@ export default function ResumeWebsite({
           </div>
         )}
 
-        <h1 className={`${heroFullscreen ? "max-w-4xl text-5xl font-semibold tracking-tight md:text-7xl" : "text-5xl font-semibold tracking-tight md:text-7xl"}`}>
+        <h1
+          className={`wave-item relative z-20 ${heroFullscreen ? "max-w-4xl text-5xl font-semibold tracking-tight md:text-7xl" : "text-5xl font-semibold tracking-tight md:text-7xl"}`}
+          style={{ "--wave-delay": "0ms" }}
+        >
           {heroFullscreen ? heroTitle : heroName}
         </h1>
-        <p className="mt-4 text-lg font-light tracking-[0.01em] text-[var(--muted)]">{data.tagline || labels.tagline}</p>
+        <p className="wave-item relative z-20 mt-4 text-lg font-light tracking-[0.01em] text-[var(--muted)]" style={{ "--wave-delay": "120ms" }}>
+          {data.tagline || labels.tagline}
+        </p>
 
         {!heroFullscreen && mediaItems.length > 0 && (
           <div className="mt-8" onClick={(event) => event.stopPropagation()}>
@@ -368,35 +502,50 @@ export default function ResumeWebsite({
 
       <div
         id={makeId("about")}
-        className={`section-space motion-fade ${getJumpableClass()}`}
+        data-snap-section="true"
+        data-wave-section="true"
+        className={`wave-section ${sectionShellClass} section-space motion-fade ${getJumpableClass()}`}
         onClick={() => jumpToEditor("about")}
       >
         {renderSectionTitle(labels.about)}
-        <div className="mt-7 grid gap-8 md:grid-cols-[260px_1fr] md:items-center">
-          <div className="mx-auto w-full max-w-[260px]">
-            <div className="soft-panel overflow-hidden rounded-3xl p-2">
-              {aboutImage ? (
-                <Image
-                  src={aboutImage.url}
-                  alt={aboutImage.name || "profile"}
-                  width={480}
-                  height={520}
-                  unoptimized
-                  className="h-[300px] w-full rounded-2xl object-cover"
-                />
-              ) : (
-                <div className="flex h-[300px] items-center justify-center rounded-2xl bg-[var(--panel)] text-sm text-[var(--muted)]">
-                  Portrait
-                </div>
-              )}
+        <div
+          className={`wave-item mt-7 grid w-full gap-8 md:grid-cols-[320px_1fr] md:items-center ${heroFullscreen ? "mx-auto max-w-3xl" : ""}`}
+          style={{ "--wave-delay": "90ms" }}
+        >
+          <div className="mx-auto w-full max-w-[380px]">
+            <div className="about-media-stack">
+              <span className="about-stack-layer about-stack-layer-1" aria-hidden="true" />
+              <span className="about-stack-layer about-stack-layer-2" aria-hidden="true" />
+              <span className="about-stack-layer about-stack-layer-3" aria-hidden="true" />
+              <div className="about-stack-main overflow-hidden rounded-3xl p-0">
+                {aboutImage ? (
+                  <Image
+                    src={aboutImage.url}
+                    alt={aboutImage.name || "profile"}
+                    width={480}
+                    height={520}
+                    unoptimized
+                    className="aspect-square w-full rounded-3xl object-cover"
+                  />
+                ) : (
+                  <div className="flex aspect-square w-full items-center justify-center rounded-3xl bg-[var(--panel)] text-sm text-[var(--muted)]">
+                    Portrait
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
           <div className="self-center">
             {profileRows.length > 0 && (
               <div id={makeId("profile")} className="mt-0 grid gap-3 text-[1.02rem] text-[var(--text)]">
-                {profileRows.map((row) => (
-                  <p key={row.label} id={row.label === "EMAIL" ? makeId("email") : undefined} className="tracking-[0.01em]">
+                {profileRows.map((row, index) => (
+                  <p
+                    key={row.label}
+                    id={row.label === "EMAIL" ? makeId("email") : undefined}
+                    className="wave-subitem tracking-[0.01em]"
+                    style={{ "--wave-index": index }}
+                  >
                     <span className="mr-2 font-semibold">{row.label}:</span>
                     <span className="text-[var(--muted)]">{row.value}</span>
                   </p>
@@ -409,7 +558,11 @@ export default function ResumeWebsite({
                 <h3 className="text-2xl font-semibold">{labels.skills}</h3>
                 <div className="mt-4 flex flex-wrap gap-3">
                   {skills.map((skill, index) => (
-                    <span key={`${skill}-${index}`} className="motion-card soft-pill rounded-full px-4 py-2 text-sm text-[var(--muted)]">
+                    <span
+                      key={`${skill}-${index}`}
+                      className="wave-subitem motion-card soft-pill max-w-full rounded-full px-4 py-2 text-sm text-[var(--muted)] whitespace-normal break-words"
+                      style={{ "--wave-index": index }}
+                    >
                       {skill}
                     </span>
                   ))}
@@ -422,15 +575,21 @@ export default function ResumeWebsite({
 
       <div
         id={makeId("experience")}
-        className={`section-space motion-fade ${getJumpableClass()}`}
+        data-snap-section="true"
+        data-wave-section="true"
+        className={`wave-section ${sectionShellClass} section-space motion-fade ${getJumpableClass()}`}
         onClick={() => jumpToEditor("experiences")}
       >
         {renderSectionTitle(labels.exp)}
         {experiences.length > 0 ? (
-          <div className="relative mt-8 pl-0">
+          <div className={`wave-item relative mt-8 w-full pl-0 ${heroFullscreen ? "mx-auto max-w-3xl" : ""}`} style={{ "--wave-delay": "90ms" }}>
             <div className="space-y-8">
               {experiences.map((item, index) => (
-                <div key={`${item.role}-${index}`} className="timeline-item relative grid grid-cols-[24px_1fr] gap-5 md:gap-6">
+                <div
+                  key={`${item.role}-${index}`}
+                  className="timeline-item wave-subitem relative grid grid-cols-[24px_1fr] gap-5 md:gap-6"
+                  style={{ "--wave-index": index }}
+                >
                   <div className="timeline-axis relative self-stretch">
                     {index > 0 && (
                       <span className="timeline-link absolute left-1/2 top-[-2rem] h-[49px] w-px -translate-x-1/2 border-l border-dashed border-[var(--line)]" />
@@ -458,21 +617,27 @@ export default function ResumeWebsite({
             </div>
           </div>
         ) : (
-          <p className="mt-6 text-[var(--muted)]">{labels.noExp}</p>
+          <p className="wave-item mt-6 text-[var(--muted)]" style={{ "--wave-delay": "90ms" }}>{labels.noExp}</p>
         )}
       </div>
 
       {awards.length > 0 && (
         <div
           id={makeId("awards")}
-          className={`section-space motion-fade ${getJumpableClass()}`}
+          data-snap-section="true"
+          data-wave-section="true"
+          className={`wave-section ${sectionShellClass} section-space motion-fade ${getJumpableClass()}`}
           onClick={() => jumpToEditor("awards")}
         >
           {renderSectionTitle(labels.awards)}
-          <div className="relative mt-8 pl-0">
+          <div className={`wave-item relative mt-8 w-full pl-0 ${heroFullscreen ? "mx-auto max-w-3xl" : ""}`} style={{ "--wave-delay": "90ms" }}>
             <div className="space-y-8">
               {awards.map((item, index) => (
-                <div key={`${item.title}-${index}`} className="timeline-item relative grid grid-cols-[24px_1fr] gap-5 md:gap-6">
+                <div
+                  key={`${item.title}-${index}`}
+                  className="timeline-item wave-subitem relative grid grid-cols-[24px_1fr] gap-5 md:gap-6"
+                  style={{ "--wave-index": index }}
+                >
                   <div className="timeline-axis relative self-stretch">
                     {index > 0 && (
                       <span className="timeline-link absolute left-1/2 top-[-2rem] h-[49px] w-px -translate-x-1/2 border-l border-dashed border-[var(--line)]" />
@@ -503,17 +668,23 @@ export default function ResumeWebsite({
 
       <div
         id={makeId("projects")}
-        className={`section-space motion-fade ${getJumpableClass()}`}
+        data-snap-section="true"
+        data-wave-section="true"
+        className={`wave-section ${sectionShellClass} section-space motion-fade ${getJumpableClass()}`}
         onClick={() => jumpToEditor("projects")}
       >
         {renderSectionTitle(labels.projects)}
         {projectItems.length > 0 ? (
-          <div className="relative mt-8 pl-0">
+          <div className={`wave-item relative mt-8 w-full pl-0 ${heroFullscreen ? "mx-auto max-w-3xl" : ""}`} style={{ "--wave-delay": "90ms" }}>
             <div className="space-y-8">
               {projectItems.map((project, index) => {
                 const expanded = Boolean(expandedProjectMap[index]);
                 return (
-                  <div key={`${project.title}-${index}`} className="timeline-item relative grid grid-cols-[24px_1fr] gap-5 md:gap-6">
+                  <div
+                    key={`${project.title}-${index}`}
+                    className="timeline-item wave-subitem relative grid grid-cols-[24px_1fr] gap-5 md:gap-6"
+                    style={{ "--wave-index": index }}
+                  >
                     <div className="timeline-axis relative self-stretch">
                       {index > 0 && (
                         <span className="timeline-link absolute left-1/2 top-[-2rem] h-[49px] w-px -translate-x-1/2 border-l border-dashed border-[var(--line)]" />
@@ -584,7 +755,7 @@ export default function ResumeWebsite({
             </div>
           </div>
         ) : (
-          <p className="text-[var(--muted)]">{labels.noProject}</p>
+          <p className="wave-item text-[var(--muted)]" style={{ "--wave-delay": "90ms" }}>{labels.noProject}</p>
         )}
       </div>
 
@@ -594,48 +765,72 @@ export default function ResumeWebsite({
           <div
             key={`custom-${sectionIndex}`}
             id={sectionIndex === 0 ? makeId("custom") : undefined}
-            className={`section-space motion-fade ${getJumpableClass()}`}
+            data-snap-section="true"
+            data-wave-section="true"
+            className={`wave-section ${customSectionShellClass} section-space motion-fade ${getJumpableClass()}`}
             onClick={() => jumpToEditor("customSections")}
           >
             {renderSectionTitle(section.title || (lang === "en" ? "Custom Section" : "自定义板块"))}
-            {section.content && <p className="section-copy mt-6">{section.content}</p>}
+            {section.content && <p className="wave-item section-copy mt-6" style={{ "--wave-delay": "90ms" }}>{section.content}</p>}
 
             {section.mediaItems.length > 0 && (
-              <div className="mt-8 flex gap-4 overflow-x-auto pb-2 snap-x snap-mandatory">
-                {section.mediaItems.map((item, mediaIndex) => (
-                  <article
-                    key={`${item.name}-${mediaIndex}`}
-                    className="motion-card soft-panel min-w-[300px] max-w-[360px] flex-1 snap-start overflow-hidden rounded-xl"
-                  >
-                    {item.type === "image" ? (
-                      <Image
-                        src={item.url}
-                        alt={item.name || "custom media"}
-                        width={700}
-                        height={420}
-                        unoptimized
-                        className="h-52 w-full object-cover"
-                      />
-                    ) : (
-                      <video controls className="h-52 w-full object-cover">
-                        <source src={item.url} />
-                      </video>
-                    )}
-                  </article>
-                ))}
-              </div>
+              <>
+                {(() => {
+                  const imageCards = section.mediaItems
+                    .filter((item) => item.type === "image" && item.url)
+                    .map((item, mediaIndex) => ({
+                      id: `${item.name || "custom"}-${mediaIndex}`,
+                      image: item.url,
+                      title: item.name || "",
+                    }));
+                  const videoItems = section.mediaItems.filter((item) => item.type !== "image" && item.url);
+
+                  return (
+                    <>
+                      {imageCards.length > 0 && (
+                        <div className="wave-item custom-media-breakout mt-8" style={{ "--wave-delay": "120ms" }}>
+                          <CardStack cards={imageCards} maxVisible={4} />
+                        </div>
+                      )}
+
+                      {videoItems.length > 0 && (
+                        <div className="wave-item custom-media-breakout mt-8 flex gap-4 overflow-x-auto pb-2 snap-x snap-mandatory" style={{ "--wave-delay": "140ms" }}>
+                          {videoItems.map((item, mediaIndex) => (
+                            <article
+                              key={`${item.name || "video"}-${mediaIndex}`}
+                              className="wave-subitem motion-card soft-panel min-w-[320px] max-w-[480px] flex-1 snap-start overflow-hidden rounded-xl"
+                              style={{ "--wave-index": mediaIndex }}
+                            >
+                              <video controls className="aspect-[4/3] w-full object-cover">
+                                <source src={item.url} />
+                              </video>
+                            </article>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
+              </>
             )}
           </div>
         ))}
 
       <div
         id={makeId("link")}
-        className={`section-space pb-4 motion-fade ${getJumpableClass()}`}
+        data-snap-section="true"
+        data-wave-section="true"
+        className={`wave-section ${sectionShellClass} section-space pb-4 motion-fade ${getJumpableClass()}`}
         onClick={() => jumpToEditor("about")}
       >
         {renderSectionTitle(labels.letsTalk)}
-        <p className="mt-5 text-center text-xl tracking-[0.03em] text-[var(--muted)]">{data.profileEmail || data.email || ""}</p>
-        <form onSubmit={onSendMessage} className="mx-auto mt-7 w-full space-y-3 md:w-2/3 md:max-w-3xl" onClick={(event) => event.stopPropagation()}>
+        <p className="wave-item mt-5 text-center text-xl tracking-[0.03em] text-[var(--muted)]" style={{ "--wave-delay": "90ms" }}>{data.profileEmail || data.email || ""}</p>
+        <form
+          onSubmit={onSendMessage}
+          className={`wave-item mt-7 w-full space-y-3 ${heroFullscreen ? "mx-auto md:w-2/3 md:max-w-3xl" : ""}`}
+          style={{ "--wave-delay": "120ms" }}
+          onClick={(event) => event.stopPropagation()}
+        >
           <div className="grid gap-3 md:grid-cols-2">
             <input
               value={talkName}
@@ -660,7 +855,7 @@ export default function ResumeWebsite({
           />
           <button
             type="submit"
-            className="w-full rounded-2xl border bg-[var(--text)] px-4 py-3 text-sm tracking-[0.08em] text-[var(--bg)] transition hover:opacity-90"
+            className="w-full rounded-2xl border bg-[var(--text)] px-4 py-3 text-sm tracking-[0.08em] text-[var(--on-accent)] transition hover:opacity-90"
           >
             {labels.send}
           </button>

@@ -297,12 +297,13 @@ export function getResumeInLanguage(data, lang) {
     projects: translateProjects(data.projects),
     projectItems: translateProjectItems(data.projectItems),
     profilePosition: translateShortLabel(data.profilePosition || "", data.profilePosition || ""),
-    profileWorkYears: translateShortLabel(data.profileWorkYears || "", data.profileWorkYears || ""),
-    profileAge: data.profileAge || "",
-    profilePhone: data.profilePhone || "",
     profileEmail: data.profileEmail || data.email || "",
-    profileExtraTitle: translateShortLabel(data.profileExtraTitle || "", data.profileExtraTitle || ""),
-    profileExtraValue: translateSentence(data.profileExtraValue || "", data.profileExtraValue || "").replace(/[.]$/, ""),
+    profileCustom1Title: translateShortLabel(data.profileCustom1Title || "", data.profileCustom1Title || ""),
+    profileCustom1Value: translateSentence(data.profileCustom1Value || "", data.profileCustom1Value || "").replace(/[.]$/, ""),
+    profileCustom2Title: translateShortLabel(data.profileCustom2Title || "", data.profileCustom2Title || ""),
+    profileCustom2Value: translateSentence(data.profileCustom2Value || "", data.profileCustom2Value || "").replace(/[.]$/, ""),
+    profileCustom3Title: translateShortLabel(data.profileCustom3Title || "", data.profileCustom3Title || ""),
+    profileCustom3Value: translateSentence(data.profileCustom3Value || "", data.profileCustom3Value || "").replace(/[.]$/, ""),
     customSections: translateCustomSections(data.customSections),
   };
 }

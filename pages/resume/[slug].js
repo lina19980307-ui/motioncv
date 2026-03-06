@@ -17,12 +17,14 @@ const emptyData = {
   projects: "",
   projectItems: [],
   profilePosition: "",
-  profileWorkYears: "",
-  profileAge: "",
-  profilePhone: "",
   profileEmail: "",
-  profileExtraTitle: "",
-  profileExtraValue: "",
+  profileCustom1Title: "",
+  profileCustom1Value: "",
+  profileCustom2Title: "",
+  profileCustom2Value: "",
+  profileCustom3Title: "",
+  profileCustom3Value: "",
+  aboutMedia: null,
   mediaItems: [],
   customSections: [],
 };
@@ -68,10 +70,6 @@ function IconEmail() {
     </>
   );
 }
-function IconCustom() {
-  return <path d="M10 3v14M3 10h14M5.8 5.8l8.4 8.4M14.2 5.8 5.8 14.2" />;
-}
-
 function DockIcon({ icon, active }) {
   return (
     <svg
@@ -92,6 +90,15 @@ export default function ResumeSharePage() {
   const lang = router.query.lang === "en" ? "en" : "zh";
   const ready = router.isReady;
   const [activeNav, setActiveNav] = useState("home");
+  const [theme, setTheme] = useState(() => {
+    if (typeof window === "undefined") return "light";
+    const savedTheme = window.localStorage.getItem("motioncv-share-theme");
+    if (savedTheme === "light" || savedTheme === "dark" || savedTheme === "gradient") {
+      return savedTheme;
+    }
+    return "light";
+  });
+  const [themeOpen, setThemeOpen] = useState(false);
 
   const { data, error } = useMemo(() => {
     if (!ready) return { data: emptyData, error: "" };
@@ -111,20 +118,42 @@ export default function ResumeSharePage() {
   const anchorPrefix = "share";
 
   const navItems = useMemo(() => {
+    const validCustomSections = Array.isArray(data.customSections)
+      ? data.customSections.filter((s) => s.title || s.content || (s.mediaItems && s.mediaItems.length))
+      : [];
+    const firstCustomTitle = String(validCustomSections[0]?.title || "").trim();
+    const customLabel = firstCustomTitle || (lang === "en" ? "Custom Section" : "自定义板块");
+
     const items = [{ id: "home", label: lang === "en" ? "Home" : "首页", icon: <IconHome /> }];
     items.push({ id: "about", label: lang === "en" ? "About" : "关于我", icon: <IconProfile /> });
-    if (String(data.skills || "").trim()) items.push({ id: "skills", label: lang === "en" ? "Skills" : "技能", icon: <IconSpark /> });
     if (String(data.experiences || "").trim()) items.push({ id: "experience", label: lang === "en" ? "Experience" : "经历", icon: <IconBriefcase /> });
     if (String(data.awards || "").trim()) items.push({ id: "awards", label: lang === "en" ? "Awards" : "荣誉", icon: <IconAward /> });
     if ((Array.isArray(data.projectItems) && data.projectItems.length > 0) || String(data.projects || "").trim()) {
       items.push({ id: "projects", label: lang === "en" ? "Projects" : "项目", icon: <IconProject /> });
     }
-    if (data.profileEmail || data.email) items.push({ id: "link", label: lang === "en" ? "Contact" : "联系", icon: <IconEmail /> });
-    if (Array.isArray(data.customSections) && data.customSections.some((s) => s.title || s.content || (s.mediaItems && s.mediaItems.length))) {
-      items.push({ id: "custom", label: lang === "en" ? "Custom" : "自定义", icon: <IconCustom /> });
+    if (validCustomSections.length > 0) {
+      items.push({ id: "custom", label: customLabel, icon: <IconSpark /> });
     }
+    if (data.profileEmail || data.email) items.push({ id: "link", label: lang === "en" ? "Contact" : "联系", icon: <IconEmail /> });
     return items;
   }, [data, lang]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem("motioncv-share-theme", theme);
+  }, [theme]);
+
+  useEffect(() => {
+    if (!themeOpen) return undefined;
+    const onPointerDown = (event) => {
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      if (target.closest("[data-theme-menu='true']")) return;
+      setThemeOpen(false);
+    };
+    window.addEventListener("pointerdown", onPointerDown);
+    return () => window.removeEventListener("pointerdown", onPointerDown);
+  }, [themeOpen]);
 
   useEffect(() => {
     if (!ready) return undefined;
@@ -154,6 +183,12 @@ export default function ResumeSharePage() {
     target.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
+  const themeOptions = [
+    { id: "light", label: "简洁明亮" },
+    { id: "dark", label: "高级暗夜" },
+    { id: "gradient", label: "炫彩渐变" },
+  ];
+
   return (
     <>
       <Head>
@@ -162,14 +197,42 @@ export default function ResumeSharePage() {
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </Head>
 
-      <div className="min-h-screen bg-white">
-      <main className="mx-auto w-full max-w-7xl px-6 pb-28 pt-8 md:px-12 md:pb-32 md:pt-12">
-        <div className="mb-6 flex items-center justify-between rounded-2xl border bg-[var(--panel)]/88 px-5 py-4 backdrop-blur-sm">
-          <div>
-            <p className="eyebrow">MOTIONCV SHARE</p>
-            <p className="mt-2 text-sm text-[var(--muted)]">可公开访问的个人简历页面</p>
-          </div>
-          <div className="flex items-center gap-3">
+      <div className={`resume-share theme-${theme} min-h-screen`}>
+        <div className="fixed left-4 top-4 z-[60] md:left-6 md:top-6" data-theme-menu="true">
+          <button
+            type="button"
+            onClick={() => setThemeOpen((prev) => !prev)}
+            className="theme-trigger inline-flex items-center gap-2 rounded-full border px-3 py-2 text-xs text-[var(--muted)] transition hover:text-[var(--text)]"
+            aria-haspopup="menu"
+            aria-expanded={themeOpen}
+          >
+            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
+              <path d="M12 3c-5 0-9 4-9 9s4 9 9 9a9 9 0 0 0 0-18z" stroke="currentColor" strokeWidth="1.8" />
+              <path d="M12 3v18M3 12h18" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+            </svg>
+            皮肤
+          </button>
+          {themeOpen && (
+            <div className="theme-menu mt-2 w-44 rounded-xl border p-1.5 shadow-[0_10px_28px_rgba(20,20,20,0.14)] backdrop-blur-xl">
+              {themeOptions.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => {
+                    setTheme(item.id);
+                    setThemeOpen(false);
+                  }}
+                  className={`block w-full rounded-lg px-3 py-2 text-left text-sm transition ${
+                    theme === item.id ? "bg-[var(--text)] text-[var(--on-accent)]" : "text-[var(--text)] hover:bg-[var(--panel-soft)]"
+                  }`}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+        <div className="fixed right-4 top-4 z-[60] flex items-center gap-3 md:right-6 md:top-6">
             <LanguageToggle
               lang={lang}
               onChange={(nextLang) => {
@@ -180,11 +243,11 @@ export default function ResumeSharePage() {
                 router.push(`${path}?${query.toString()}`);
               }}
             />
-            <Link href="/" className="rounded-full border px-4 py-2 text-xs text-[var(--muted)]">
+            <Link href="/editor" className="share-editor-btn rounded-full border px-4 py-2 text-xs text-[var(--muted)] transition hover:text-[var(--text)]">
               返回编辑器
             </Link>
-          </div>
         </div>
+        <main className="w-full px-0 pb-28 pt-2 md:pb-32 md:pt-4">
 
         {!ready ? (
           <section className="rounded-2xl border bg-[var(--panel)] p-8">
@@ -197,22 +260,22 @@ export default function ResumeSharePage() {
           </section>
         ) : (
           <>
-            <ResumeWebsite data={displayData} lang={lang} sectionIdPrefix={anchorPrefix} centeredSectionTitles heroFullscreen />
-            <nav className="fixed bottom-5 left-1/2 z-50 -translate-x-1/2 rounded-[2.2rem] bg-[linear-gradient(180deg,rgba(255,255,255,0.78),rgba(255,255,255,0.62))] px-4 py-3 shadow-[0_16px_44px_rgba(28,28,28,0.14)] backdrop-blur-xl">
+            <ResumeWebsite data={displayData} lang={lang} sectionIdPrefix={anchorPrefix} heroFullscreen />
+            <nav className="dock-shell fixed bottom-5 left-1/2 z-50 -translate-x-1/2 rounded-[2.2rem] px-4 py-3 shadow-[0_16px_44px_rgba(28,28,28,0.14)] backdrop-blur-xl">
               <ul className="flex items-center gap-2">
                 {navItems.map((item) => (
                   <li key={item.id} className="group relative">
                     <button
                       type="button"
                       onClick={() => onDockClick(item.id)}
-                      className={`relative rounded-[1.15rem] p-3.5 transition duration-200 ${activeNav === item.id ? "scale-[1.07] bg-white/95 shadow-[0_8px_20px_rgba(20,20,20,0.12)]" : "bg-white/72 hover:scale-[1.05] hover:bg-white/92 active:scale-95"}`}
+                      className={`dock-btn relative rounded-[1.15rem] p-3.5 transition duration-200 ${activeNav === item.id ? "scale-[1.07] dock-btn-active shadow-[0_8px_20px_rgba(20,20,20,0.12)]" : "dock-btn-idle hover:scale-[1.05] active:scale-95"}`}
                     >
                       <DockIcon icon={item.icon} active={activeNav === item.id} />
                       {activeNav === item.id && (
                         <span className="absolute -bottom-2 left-1/2 h-1 w-3 -translate-x-1/2 rounded-full bg-[rgba(120,120,120,0.45)]" />
                       )}
                     </button>
-                    <div className="pointer-events-none absolute -top-12 left-1/2 -translate-x-1/2 scale-90 whitespace-nowrap rounded-full bg-white/95 px-3 py-1.5 text-xs leading-none text-[var(--muted)] opacity-0 shadow-[0_8px_16px_rgba(24,24,24,0.08)] transition duration-200 group-hover:scale-100 group-hover:opacity-100">
+                    <div className="dock-tip pointer-events-none absolute -top-12 left-1/2 -translate-x-1/2 scale-90 whitespace-nowrap rounded-full px-3 py-1.5 text-xs leading-none text-[var(--muted)] opacity-0 shadow-[0_8px_16px_rgba(24,24,24,0.08)] transition duration-200 group-hover:scale-100 group-hover:opacity-100">
                       {item.label}
                     </div>
                   </li>
@@ -221,7 +284,7 @@ export default function ResumeSharePage() {
             </nav>
           </>
         )}
-      </main>
+        </main>
       </div>
     </>
   );
