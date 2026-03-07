@@ -113,9 +113,9 @@ export default function CardStack({ cards = [], maxVisible = 4 }) {
                   layout
                   transition={SPRING}
                   whileHover={{
-                    boxShadow: "0 26px 42px rgba(20,20,20,0.24)",
+                    boxShadow: "0 16px 34px rgba(110, 124, 158, 0.16)",
                   }}
-                  className="relative h-full w-full overflow-hidden rounded-2xl border border-transparent bg-[var(--panel)] shadow-[0_14px_24px_rgba(20,20,20,0.16)]"
+                  className="card-stack-card relative h-full w-full overflow-hidden rounded-2xl"
                 >
                   <Image
                     src={card.image}

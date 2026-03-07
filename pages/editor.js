@@ -1,54 +1,18 @@
 import Head from "next/head";
 import { useEffect, useRef, useState } from "react";
+import EditorPreviewPanel from "../components/EditorPreviewPanel";
 import LanguageToggle from "../components/LanguageToggle";
-import ResumeWebsite from "../components/ResumeWebsite";
+import {
+  buildTemplateDraft,
+  cloneDefaultResumeTemplate,
+  defaultPublishedSlug,
+  defaultResumeTemplateVersion,
+  shouldSeedImportedTemplate,
+} from "../data/defaultResumeTemplate";
 import { saveResumeSnapshot, toSlug } from "../utils/shareResume";
 import { getResumeInLanguage } from "../utils/resumeLanguage";
 
-const starter = {
-  name: "张晨",
-  tagline: "Product Designer focused on clarity and systems.",
-  about:
-    "我专注于复杂产品的信息架构与体验优化，擅长将抽象需求转化为清晰可执行的界面与流程。",
-  experiences:
-    "2022-Now | Lead Product Designer | Atelier Labs | 负责设计系统重构与跨团队协作机制建设\n2019-2022 | Senior Product Designer | Northbound Studio | 主导核心流程改版并提升关键路径转化",
-  skills: "Figma, Design System, UX Strategy, Prototyping",
-  awards:
-    "2024 | Red Dot Award | MotionCV | 荣获设计类国际奖项\n2023 | Best Product Innovation | Atelier Labs | 年度最佳创新项目",
-  projects:
-    "MotionCV Web | 在线简历生成器，支持模块化编辑与发布\nPortfolio System | 统一作品展示组件库，减少重复开发成本",
-  projectItems: [
-    {
-      period: "2024",
-      title: "MotionCV Web",
-      subtitle: "Resume Website Builder",
-      summary: "在线简历生成器，支持模块化编辑与发布。",
-      details:
-        "构建了从表单输入、实时预览到一键发布的完整流程，支持中英切换、媒体上传与分享链接。",
-      media: null,
-    },
-    {
-      period: "2023",
-      title: "Portfolio System",
-      subtitle: "Design Platform",
-      summary: "统一作品展示组件库，减少重复开发成本。",
-      details:
-        "沉淀可复用卡片与内容模板，显著提升项目展示效率和视觉一致性。",
-      media: null,
-    },
-  ],
-  profilePosition: "电商设计",
-  profileEmail: "hello@motioncv.design",
-  profileCustom1Title: "",
-  profileCustom1Value: "",
-  profileCustom2Title: "",
-  profileCustom2Value: "",
-  profileCustom3Title: "",
-  profileCustom3Value: "",
-  aboutMedia: null,
-  mediaItems: [],
-  customSections: [],
-};
+const starter = cloneDefaultResumeTemplate();
 
 const MAX_MAIN_MEDIA = 6;
 const MAX_CUSTOM_SECTIONS = 3;
@@ -56,9 +20,17 @@ const MAX_CUSTOM_MEDIA = 6;
 const MAX_PROJECT_ITEMS = 8;
 const MAX_IMAGE_MB = 2;
 const MAX_VIDEO_MB = 8;
+const MAX_AUDIO_SECONDS = 10;
 const MAX_IMAGE_BYTES = MAX_IMAGE_MB * 1024 * 1024;
 const MAX_VIDEO_BYTES = MAX_VIDEO_MB * 1024 * 1024;
 const DRAFT_KEY = "motioncv:editor:draft";
+const TEMPLATE_VERSION_KEY = "motioncv:editor:template-version";
+const EDITOR_QUICK_LINKS = [
+  { anchorId: "edit-basic", label: "基础信息" },
+  { anchorId: "edit-experiences", label: "经历" },
+  { anchorId: "edit-projects", label: "项目" },
+  { anchorId: "edit-custom", label: "媒体与板块" },
+];
 
 function createCustomSection() {
   return {
@@ -104,10 +76,19 @@ function getInitialDraft() {
   if (typeof window === "undefined") return starter;
   try {
     const raw = window.localStorage.getItem(DRAFT_KEY);
+    const saved = raw ? JSON.parse(raw) : null;
+    const savedVersion = window.localStorage.getItem(TEMPLATE_VERSION_KEY);
+    if (savedVersion !== defaultResumeTemplateVersion) {
+      const imported = buildTemplateDraft(saved);
+      window.localStorage.setItem(DRAFT_KEY, JSON.stringify(imported));
+      window.localStorage.setItem(TEMPLATE_VERSION_KEY, defaultResumeTemplateVersion);
+      return imported;
+    }
     if (!raw) return starter;
-    const saved = JSON.parse(raw);
     if (!saved || typeof saved !== "object") return starter;
-    const merged = { ...starter, ...saved };
+    const merged = shouldSeedImportedTemplate(saved)
+      ? cloneDefaultResumeTemplate()
+      : { ...cloneDefaultResumeTemplate(), ...saved };
     if (!merged.profileEmail && merged.email) merged.profileEmail = merged.email;
     if (!merged.profileCustom1Title && saved.profileExtraTitle) {
       merged.profileCustom1Title = saved.profileExtraTitle;
@@ -134,12 +115,19 @@ export default function Home() {
   const [generateStatus, setGenerateStatus] = useState("");
   const [uploadStatus, setUploadStatus] = useState("");
   const [aboutUploadStatus, setAboutUploadStatus] = useState("");
+  const [interactionAudioStatus, setInteractionAudioStatus] = useState("");
+  const [isRecordingInteractionAudio, setIsRecordingInteractionAudio] = useState(false);
+  const [recordingSeconds, setRecordingSeconds] = useState(0);
   const [customUploadStatus, setCustomUploadStatus] = useState({});
   const [projectUploadStatus, setProjectUploadStatus] = useState({});
   const [activeEditorAnchor, setActiveEditorAnchor] = useState("");
 
   const previewRef = useRef(null);
   const jumpTimerRef = useRef(null);
+  const interactionRecorderRef = useRef(null);
+  const interactionRecorderStreamRef = useRef(null);
+  const interactionRecorderChunksRef = useRef([]);
+  const interactionRecorderTimerRef = useRef(null);
   const displayData = getResumeInLanguage(resumeData, lang);
 
   useEffect(() => {
@@ -154,6 +142,7 @@ export default function Home() {
     if (typeof window === "undefined") return;
     try {
       window.localStorage.setItem(DRAFT_KEY, JSON.stringify(formData));
+      window.localStorage.setItem(TEMPLATE_VERSION_KEY, defaultResumeTemplateVersion);
     } catch {
       // ignore storage failures
     }
@@ -163,6 +152,12 @@ export default function Home() {
     () => () => {
       if (jumpTimerRef.current) {
         clearTimeout(jumpTimerRef.current);
+      }
+      if (interactionRecorderTimerRef.current) {
+        clearInterval(interactionRecorderTimerRef.current);
+      }
+      if (interactionRecorderStreamRef.current) {
+        interactionRecorderStreamRef.current.getTracks().forEach((track) => track.stop());
       }
     },
     []
@@ -205,8 +200,75 @@ export default function Home() {
     );
   };
 
+  const isSupportedAudioFile = (file) => {
+    const lower = file.name.toLowerCase();
+    return file.type.startsWith("audio/") || /\.(mp3|wav|m4a|aac|ogg|webm)$/.test(lower);
+  };
+
   const validateByType = (file, type) =>
     type === "image" ? isSupportedImageFile(file) : isSupportedVideoFile(file);
+
+  const readAudioDuration = (file) =>
+    new Promise((resolve, reject) => {
+      if (typeof document === "undefined") {
+        reject(new Error("unavailable"));
+        return;
+      }
+      const objectUrl = URL.createObjectURL(file);
+      const audio = document.createElement("audio");
+      audio.preload = "metadata";
+      audio.onloadedmetadata = () => {
+        const duration = Number.isFinite(audio.duration) ? audio.duration : 0;
+        URL.revokeObjectURL(objectUrl);
+        resolve(duration);
+      };
+      audio.onerror = () => {
+        URL.revokeObjectURL(objectUrl);
+        reject(new Error("metadata"));
+      };
+      audio.src = objectUrl;
+    });
+
+  const clearInteractionRecorder = () => {
+    if (interactionRecorderTimerRef.current) {
+      clearInterval(interactionRecorderTimerRef.current);
+      interactionRecorderTimerRef.current = null;
+    }
+    if (interactionRecorderStreamRef.current) {
+      interactionRecorderStreamRef.current.getTracks().forEach((track) => track.stop());
+      interactionRecorderStreamRef.current = null;
+    }
+    interactionRecorderRef.current = null;
+    interactionRecorderChunksRef.current = [];
+    setIsRecordingInteractionAudio(false);
+    setRecordingSeconds(0);
+  };
+
+  const saveInteractionAudioFile = async (file, sourceLabel = "上传") => {
+    if (!isSupportedAudioFile(file)) {
+      setInteractionAudioStatus("音频格式不支持，请上传 mp3 / wav / m4a / aac / ogg / webm");
+      return;
+    }
+
+    setInteractionAudioStatus(`${sourceLabel}音频处理中...`);
+    const duration = await readAudioDuration(file);
+    if (!duration || duration > MAX_AUDIO_SECONDS) {
+      setInteractionAudioStatus(`音频时长需在 ${MAX_AUDIO_SECONDS} 秒内`);
+      return;
+    }
+
+    const url = await fileToDataUrl(file);
+    syncData((prev) => ({
+      ...prev,
+      interactionAudio: {
+        type: "audio",
+        name: file.name,
+        url,
+        duration,
+      },
+    }));
+    setInteractionAudioStatus(`互动语音${sourceLabel}成功（${duration.toFixed(1)}s）`);
+  };
 
   const isWithinSizeLimit = (file, type) =>
     type === "image" ? file.size <= MAX_IMAGE_BYTES : file.size <= MAX_VIDEO_BYTES;
@@ -407,9 +469,101 @@ export default function Home() {
     event.target.value = "";
   };
 
+  const onInteractionAudioChange = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    try {
+      await saveInteractionAudioFile(file, "上传");
+    } catch {
+      setInteractionAudioStatus("音频读取失败，请重试");
+    } finally {
+      event.target.value = "";
+    }
+  };
+
+  const stopInteractionAudioRecording = () => {
+    if (interactionRecorderTimerRef.current) {
+      clearInterval(interactionRecorderTimerRef.current);
+      interactionRecorderTimerRef.current = null;
+    }
+    const recorder = interactionRecorderRef.current;
+    if (recorder && recorder.state !== "inactive") {
+      setInteractionAudioStatus("录音完成，正在处理...");
+      recorder.stop();
+      return;
+    }
+    clearInteractionRecorder();
+  };
+
+  const startInteractionAudioRecording = async () => {
+    if (typeof window === "undefined" || typeof navigator === "undefined") return;
+    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
+      setInteractionAudioStatus("当前浏览器不支持录音，请改用上传音频文件");
+      return;
+    }
+
+    clearInteractionRecorder();
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      interactionRecorderStreamRef.current = stream;
+      interactionRecorderChunksRef.current = [];
+
+      const preferredTypes = [
+        "audio/webm;codecs=opus",
+        "audio/webm",
+        "audio/ogg;codecs=opus",
+      ];
+      const supportedMimeType = preferredTypes.find((type) => MediaRecorder.isTypeSupported(type)) || "";
+      const recorder = supportedMimeType ? new MediaRecorder(stream, { mimeType: supportedMimeType }) : new MediaRecorder(stream);
+
+      interactionRecorderRef.current = recorder;
+      recorder.ondataavailable = (recordEvent) => {
+        if (recordEvent.data?.size) {
+          interactionRecorderChunksRef.current.push(recordEvent.data);
+        }
+      };
+      recorder.onstop = async () => {
+        try {
+          const mimeType = recorder.mimeType || "audio/webm";
+          const extension = mimeType.includes("ogg") ? "ogg" : "webm";
+          const blob = new Blob(interactionRecorderChunksRef.current, { type: mimeType });
+          const file = new File([blob], `interaction-voice.${extension}`, { type: mimeType });
+          await saveInteractionAudioFile(file, "录制");
+        } catch {
+          setInteractionAudioStatus("录音处理失败，请重试");
+        } finally {
+          clearInteractionRecorder();
+        }
+      };
+
+      recorder.start();
+      setIsRecordingInteractionAudio(true);
+      setRecordingSeconds(0);
+      setInteractionAudioStatus("录音中...");
+      interactionRecorderTimerRef.current = setInterval(() => {
+        setRecordingSeconds((prev) => {
+          const next = prev + 1;
+          if (next >= MAX_AUDIO_SECONDS) {
+            stopInteractionAudioRecording();
+            return MAX_AUDIO_SECONDS;
+          }
+          return next;
+        });
+      }, 1000);
+    } catch {
+      clearInteractionRecorder();
+      setInteractionAudioStatus("无法启动录音，请检查麦克风权限");
+    }
+  };
+
   const clearAboutImage = () => {
     syncData((prev) => ({ ...prev, aboutMedia: null }));
     setAboutUploadStatus("已移除关于我图片");
+  };
+
+  const clearInteractionAudio = () => {
+    syncData((prev) => ({ ...prev, interactionAudio: null }));
+    setInteractionAudioStatus("已移除互动语音");
   };
 
   const onCustomImageChange = async (sectionIndex, event) => {
@@ -536,7 +690,7 @@ export default function Home() {
   const onPublish = async () => {
     const currentData = { ...formData };
     setResumeData(currentData);
-    const slug = toSlug(currentData.name);
+    const slug = defaultPublishedSlug || toSlug(currentData.name);
     const saveResult = saveResumeSnapshot(slug, currentData);
     if (!saveResult.ok) {
       if (saveResult.reason === "quota") {
@@ -587,6 +741,7 @@ export default function Home() {
     setCopyStatus("");
     setUploadStatus("");
     setAboutUploadStatus("");
+    setInteractionAudioStatus("");
     setCustomUploadStatus({});
     setProjectUploadStatus({});
     setGenerateStatus("");
@@ -600,21 +755,24 @@ export default function Home() {
     about: "edit-about",
     experiences: "edit-experiences",
     skills: "edit-skills",
-    awards: "edit-awards",
+    awards: "edit-custom",
     projects: "edit-projects",
     customSections: "edit-custom",
   };
 
-  const jumpToEditorSection = (section) => {
-    if (typeof window === "undefined") return;
-    const anchorId = sectionAnchorMap[section];
-    if (!anchorId) return;
+  const focusEditorAnchor = (anchorId) => {
+    if (typeof window === "undefined" || !anchorId) return;
     const target = document.getElementById(anchorId);
     if (!target) return;
     target.scrollIntoView({ behavior: "smooth", block: "center" });
     setActiveEditorAnchor(anchorId);
     if (jumpTimerRef.current) clearTimeout(jumpTimerRef.current);
     jumpTimerRef.current = setTimeout(() => setActiveEditorAnchor(""), 1200);
+  };
+
+  const jumpToEditorSection = (section) => {
+    const anchorId = sectionAnchorMap[section];
+    focusEditorAnchor(anchorId);
   };
 
   const editorAnchorClass = (anchorId, baseClass = "") =>
@@ -628,26 +786,43 @@ export default function Home() {
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </Head>
 
-      <main className="mx-auto w-full max-w-7xl px-6 py-8 md:px-12 md:py-12">
-        <div className="mb-6 flex items-center justify-between rounded-2xl border bg-[var(--panel)] px-5 py-4">
+      <main className="editor-page mx-auto w-full max-w-[1640px] px-6 py-8 md:px-10 md:py-10 xl:px-12">
+        <div className="editor-header-card mb-6 flex flex-col gap-4 rounded-[2rem] border bg-[var(--panel)] px-6 py-5 md:flex-row md:items-center md:justify-between">
           <div>
             <p className="eyebrow">MOTIONCV</p>
-            <p className="mt-2 text-sm text-[var(--muted)]">输入信息后生成你的个人简历网站</p>
+            <h1 className="mt-2 text-2xl font-semibold tracking-[-0.03em]">编辑你的个人简历网站</h1>
+            <p className="mt-2 text-sm text-[var(--muted)]">左侧整理信息，右侧查看对应分享页的精简预览。</p>
           </div>
           <LanguageToggle lang={lang} onChange={setLang} />
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-[420px_1fr]">
-          <form onSubmit={onGenerate} className="rounded-2xl border bg-[var(--panel)] p-5 lg:sticky lg:top-6 lg:h-[calc(100vh-3rem)] lg:overflow-y-auto">
-            <h2 className="text-xl font-semibold">简历信息输入</h2>
+        <div className="editor-layout grid gap-6 xl:grid-cols-[minmax(360px,440px)_minmax(0,1fr)]">
+          <form onSubmit={onGenerate} className="editor-form rounded-[2rem] border bg-[var(--panel)] p-5 lg:p-6 xl:sticky xl:top-6 xl:h-[calc(100vh-3rem)] xl:overflow-y-auto">
+            <div className="editor-form-top">
+              <div>
+                <h2 className="text-xl font-semibold">简历信息输入</h2>
+                <p className="mt-2 text-sm text-[var(--muted)]">按分享页结构整理内容，修改后右侧会同步预览重点信息。</p>
+              </div>
+              <div className="editor-quick-links">
+                {EDITOR_QUICK_LINKS.map((item) => (
+                  <button key={item.anchorId} type="button" onClick={() => focusEditorAnchor(item.anchorId)} className="editor-quick-link">
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            </div>
 
-            <label id="edit-basic" className={editorAnchorClass("edit-basic", "mt-5 block text-sm text-[var(--muted)]")}>
+            <section id="edit-basic" className="editor-form-section mt-5">
+              <div className="editor-form-section-head">
+                <div>
+                  <h3 className="editor-form-section-title">基础信息</h3>
+                  <p className="editor-form-section-note">对应分享页首页和 About 里的主要展示内容。</p>
+                </div>
+              </div>
+
+              <label className="mt-5 block text-sm text-[var(--muted)]">
               姓名
               <input name="name" value={formData.name} onChange={onFieldChange} className="mt-2 w-full rounded-xl border bg-transparent px-3 py-2 outline-none" />
-            </label>
-            <label className="mt-4 block text-sm text-[var(--muted)]">
-              定位语
-              <input name="tagline" value={formData.tagline} onChange={onFieldChange} className="mt-2 w-full rounded-xl border bg-transparent px-3 py-2 outline-none" />
             </label>
             <label id="edit-about" className={editorAnchorClass("edit-about", "mt-4 block text-sm text-[var(--muted)]")}>
               自我介绍
@@ -677,6 +852,41 @@ export default function Home() {
                 <p className="mt-1 text-xs text-[var(--muted)]">当前图片：{formData.aboutMedia.name}</p>
               )}
               {aboutUploadStatus && <p className="mt-1 text-xs text-[var(--muted)]">{aboutUploadStatus}</p>}
+            </div>
+            <div className="mt-3 rounded-xl border p-3">
+              <p className="text-sm text-[var(--muted)]">互动语音（点击 3D 模型播放，10 秒内）</p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                <input
+                  id="interaction-audio-upload"
+                  type="file"
+                  accept="audio/*,.mp3,.wav,.m4a,.aac,.ogg,.webm"
+                  onChange={onInteractionAudioChange}
+                  className="sr-only"
+                />
+                <label htmlFor="interaction-audio-upload" className="inline-flex cursor-pointer items-center rounded-full border px-4 py-2 text-xs text-[var(--muted)]">
+                  上传互动语音
+                </label>
+                <button
+                  type="button"
+                  onClick={isRecordingInteractionAudio ? stopInteractionAudioRecording : startInteractionAudioRecording}
+                  className="inline-flex items-center rounded-full border px-4 py-2 text-xs text-[var(--muted)]"
+                >
+                  {isRecordingInteractionAudio ? `停止录音（${recordingSeconds}s）` : "开始录音"}
+                </button>
+                {formData.interactionAudio && (
+                  <button type="button" onClick={clearInteractionAudio} className="inline-flex items-center rounded-full border px-4 py-2 text-xs text-[var(--muted)]">
+                    移除互动语音
+                  </button>
+                )}
+              </div>
+              <p className="mt-2 text-xs text-[var(--muted)]">支持 mp3 / wav / m4a / aac / ogg / webm，点击模型时播放，时长 ≤ {MAX_AUDIO_SECONDS} 秒</p>
+              {formData.interactionAudio?.name && (
+                <p className="mt-1 text-xs text-[var(--muted)]">
+                  当前音频：{formData.interactionAudio.name}
+                  {formData.interactionAudio.duration ? ` · ${Number(formData.interactionAudio.duration).toFixed(1)}s` : ""}
+                </p>
+              )}
+              {interactionAudioStatus && <p className="mt-1 text-xs text-[var(--muted)]">{interactionAudioStatus}</p>}
             </div>
             <div className="mt-3 grid gap-3 sm:grid-cols-2">
               <label className="block text-sm text-[var(--muted)]">
@@ -715,7 +925,17 @@ export default function Home() {
                 <input name="profileCustom3Value" value={formData.profileCustom3Value} onChange={onFieldChange} className="mt-2 w-full rounded-xl border bg-transparent px-3 py-2 outline-none" />
               </label>
             </div>
-            <label id="edit-experiences" className={editorAnchorClass("edit-experiences", "mt-4 block text-sm text-[var(--muted)]")}>
+            </section>
+
+            <section className="editor-form-section mt-4">
+              <div className="editor-form-section-head">
+                <div>
+                  <h3 className="editor-form-section-title">经历与技能</h3>
+                  <p className="editor-form-section-note">这部分会在分享页里形成时间轴和技能标签。</p>
+                </div>
+              </div>
+
+              <label id="edit-experiences" className={editorAnchorClass("edit-experiences", "mt-5 block text-sm text-[var(--muted)]")}>
               工作经历（每行：时间 | 职位 | 公司 | 描述）
               <textarea name="experiences" value={formData.experiences} onChange={onFieldChange} rows={6} className="mt-2 w-full rounded-xl border bg-transparent px-3 py-2 outline-none" />
             </label>
@@ -723,11 +943,16 @@ export default function Home() {
               技能（选填，逗号或换行分隔）
               <textarea name="skills" value={formData.skills} onChange={onFieldChange} rows={3} className="mt-2 w-full rounded-xl border bg-transparent px-3 py-2 outline-none" />
             </label>
-            <label id="edit-awards" className={editorAnchorClass("edit-awards", "mt-4 block text-sm text-[var(--muted)]")}>
-              奖项与荣誉（选填，每行：时间 | 奖项 | 机构 | 描述）
-              <textarea name="awards" value={formData.awards} onChange={onFieldChange} rows={4} className="mt-2 w-full rounded-xl border bg-transparent px-3 py-2 outline-none" />
-            </label>
-            <div id="edit-projects" className={editorAnchorClass("edit-projects", "mt-4 rounded-xl border p-3")}>
+            </section>
+
+            <div id="edit-projects" className={editorAnchorClass("edit-projects", "editor-form-section mt-4 rounded-xl border p-3")}>
+              <div className="editor-form-section-head">
+                <div>
+                  <h3 className="editor-form-section-title">项目经历</h3>
+                  <p className="editor-form-section-note">对应分享页的时间轴项目卡片与详情展开内容。</p>
+                </div>
+              </div>
+
               <div className="flex items-center justify-between">
                 <p className="text-sm text-[var(--muted)]">项目经历（时间轴，最多 {MAX_PROJECT_ITEMS} 条）</p>
                 <button
@@ -852,8 +1077,15 @@ export default function Home() {
                 ))}
               </div>
             </div>
-            <div id="edit-custom" className={editorAnchorClass("edit-custom", "mt-4 rounded-xl border p-3")}>
-              <p className="text-sm text-[var(--muted)]">顶部照片/视频（最多 {MAX_MAIN_MEDIA} 个）</p>
+            <div id="edit-custom" className={editorAnchorClass("edit-custom", "editor-form-section mt-4 rounded-xl border p-3")}>
+              <div className="editor-form-section-head">
+                <div>
+                  <h3 className="editor-form-section-title">媒体与扩展板块</h3>
+                  <p className="editor-form-section-note">用于顶部媒体、奖项轮播和自定义内容展示。</p>
+                </div>
+              </div>
+
+              <p className="text-sm text-[var(--muted)]">顶部照片/视频 / Banner 轮播（最多 {MAX_MAIN_MEDIA} 个）</p>
               <div className="mt-3 flex flex-wrap gap-2">
                 <input id="image-upload" type="file" multiple accept=".png,.jpg,.jpeg,image/png,image/jpeg,image/webp,image/gif" onChange={onMainImageChange} className="sr-only" />
                 <label htmlFor="image-upload" className="inline-flex cursor-pointer items-center rounded-full border px-4 py-2 text-sm text-[var(--muted)] transition hover:text-[var(--text)]">
@@ -973,7 +1205,7 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="mt-6 flex gap-3">
+            <div className="editor-form-actions mt-6">
               <button type="submit" className="rounded-full border bg-[var(--text)] px-5 py-2 text-sm text-[var(--bg)]">生成网站</button>
               <button type="button" onClick={onPublish} className="rounded-full border px-5 py-2 text-sm text-[var(--muted)] transition hover:text-[var(--text)]">一键发布</button>
               <button type="button" onClick={resetAll} className="rounded-full border px-5 py-2 text-sm text-[var(--muted)]">重置</button>
@@ -989,8 +1221,8 @@ export default function Home() {
             )}
           </form>
 
-          <div ref={previewRef}>
-            <ResumeWebsite data={displayData} lang={lang} onSectionNavigate={jumpToEditorSection} />
+          <div ref={previewRef} className="min-w-0 xl:sticky xl:top-6">
+            <EditorPreviewPanel data={displayData} lang={lang} onSectionNavigate={jumpToEditorSection} />
           </div>
         </div>
       </main>

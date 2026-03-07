@@ -26,7 +26,129 @@ const phraseMap = [
   ["设计负责人", "design lead"],
   ["资深", "senior"],
   ["负责人", "lead"],
+  ["独立唱作歌手", "indie singer-songwriter"],
+  ["电子流行", "electro-pop"],
+  ["情绪叙事", "emotional storytelling"],
+  ["现场舞台表达", "live stage performance"],
+  ["作品游走在", "whose work moves between"],
+  ["抒情舞曲", "melodic dance-pop"],
+  ["电影感的歌词", "cinematic lyrics"],
+  ["克制的声线", "restrained vocals"],
+  ["层层推进的节奏", "gradually unfolding rhythms"],
+  ["夜色", "nighttime"],
+  ["海风", "sea breeze"],
+  ["告别", "farewells"],
+  ["重新出发", "new beginnings"],
+  ["持续打磨", "continually shaping"],
+  ["单曲", "singles"],
+  ["舞台编排", "stage direction"],
+  ["视觉内容", "visual content"],
+  ["完整而有呼吸感的现场体验", "a complete, breathing live experience"],
+  ["驻场主唱", "resident vocalist"],
+  ["词曲创作", "songwriting"],
+  ["Demo 制作", "demo production"],
+  ["抒情翻唱", "emotive covers"],
+  ["核心曲目", "core setlist"],
+  ["建立稳定舞台风格与观众记忆点", "built a recognizable stage identity"],
+  ["完成首张个人 EP 的词曲写作、编曲沟通与录音统筹", "completed songwriting, arrangement coordination, and recording for the debut EP"],
+  ["唱作", "songwriting"],
+  ["现场演出", "live performance"],
+  ["录音", "recording"],
+  ["和声编写", "vocal arrangement"],
+  ["视觉概念", "visual concept"],
+  ["乐队排练", "band rehearsal"],
+  ["巡演主视觉 Banner", "tour banner"],
+  ["单曲发行 Banner", "single release banner"],
+  ["媒体采访 Banner", "press banner"],
+  ["用轮播图片展示现场海报、排练片段与舞台氛围", "showcases live posters, rehearsal moments, and stage atmosphere through the carousel"],
+  ["聚合单曲封面、幕后花絮与社交传播视觉", "gathers single covers, behind-the-scenes moments, and campaign visuals"],
+  ["展示人物照片、演出抓拍与主题视觉素材", "features artist portraits, live stills, and theme visuals"],
+  ["围绕夜晚、告别与重新出发展开", "built around night, farewells, and new beginnings"],
+  ["以 live session 形式重组代表作品，强化现场呼吸感与镜头叙事", "reimagines signature songs as live sessions with stronger live dynamics and camera storytelling"],
+  ["三首歌组成的概念 EP，把海风、失眠与情绪回响写进合成器与鼓点里", "a three-track concept EP writing sea breeze, sleeplessness, and emotional echoes into synths and drums"],
+  ["结合舞台排练、动作设计与影像剪辑的短片式演出企划", "a short-film style performance concept combining rehearsal, movement design, and editing"],
+  ["风格", "style"],
+  ["演出", "shows"],
+  ["合作", "contact"],
+  ["电子流行、抒情舞曲、夜色叙事", "electro-pop, melodic dance-pop, nocturnal storytelling"],
+  ["剧场专场、live house、品牌活动与影像化现场", "theater sets, live houses, brand stages, and filmed live shows"],
+  ["演出邀约、合作写歌、品牌联动与视觉企划", "booking, co-writing, brand collaborations, and visual direction"],
+  ["这里收录近阶段的艺人照片、live session 截图与舞台视觉，方便作为媒体包、演出海报和社交平台内容使用", "collects recent artist portraits, live session stills, and stage visuals for press kits, posters, and social content"],
+  ["从排练室、海边、公路与冷暖光影提炼视觉气质，持续延展 LINA 的现场美学与内容封面语言", "distills visuals from rehearsal rooms, coastlines, highways, and shifting light to extend LINA's live aesthetic and cover language"],
 ];
+
+const exactLabelMap = {
+  独立唱作歌手: "Indie Singer-Songwriter",
+  风格: "Style",
+  演出: "Shows",
+  合作: "Contact",
+  唱作: "Songwriting",
+  现场演出: "Live Performance",
+  录音: "Recording",
+  和声编写: "Vocal Arrangement",
+  舞台编排: "Stage Direction",
+  视觉概念: "Visual Concept",
+  "短视频 live session": "Live Session Production",
+  乐队排练: "Band Rehearsal",
+  情绪叙事: "Emotional Storytelling",
+  电子流行: "Electro-pop",
+  "巡演主视觉 Banner": "Tour Banner Visuals",
+  "单曲发行 Banner": "Single Release Banner",
+  "媒体采访 Banner": "Press Feature Banner",
+};
+
+const exactSentenceMap = {
+  "独立唱作歌手，擅长电子流行、情绪叙事与现场舞台表达。":
+    "Indie singer-songwriter focused on electro-pop, emotional storytelling, and immersive live stage performance.",
+  "LINA 是一名独立唱作歌手，作品游走在电子流行与抒情舞曲之间。她用电影感的歌词、克制的声线和层层推进的节奏去写夜色、海风、告别与重新出发。过去两年，她持续打磨单曲、舞台编排与视觉内容，希望把每一次演出都变成完整而有呼吸感的现场体验。":
+    "LINA is an indie singer-songwriter whose work moves between electro-pop and melodic dance-pop. She writes about night drives, sea breeze, farewells, and new beginnings through cinematic lyrics, restrained vocals, and gradually unfolding rhythms. Over the past two years, she has been shaping singles, stage direction, and visual content to make every performance feel intimate, atmospheric, and complete.",
+  "持续发布单曲与现场影像，完成小型剧场演出、短视频 live session 与视觉企划。":
+    "Releasing original singles and live visuals while producing small-theater performances, short-form live sessions, and visual concepts.",
+  "以电子流行与抒情翻唱为核心曲目，建立稳定舞台风格与观众记忆点。":
+    "Performed electro-pop originals and emotive cover sets while building a recognizable stage identity and audience connection.",
+  "完成首张个人 EP 的词曲写作、编曲沟通与录音统筹。":
+    "Completed songwriting, arrangement coordination, and recording direction for a debut EP project.",
+  "用轮播图片展示现场海报、排练片段与舞台氛围。":
+    "A banner series featuring live posters, rehearsal moments, and stage atmosphere.",
+  "聚合单曲封面、幕后花絮与社交传播视觉。":
+    "A visual rollout combining cover art, behind-the-scenes moments, and campaign imagery.",
+  "展示人物照片、演出抓拍与主题视觉素材。":
+    "A curated banner set built from portraits, live stills, and editorial visuals.",
+  "电子流行单曲，围绕夜晚、告别与重新出发展开。":
+    "A lead electro-pop single built around nightfall, farewells, and new beginnings.",
+  "以 live session 形式重组代表作品，强化现场呼吸感与镜头叙事。":
+    "A live-session reinterpretation of signature songs with stronger breathing room and camera storytelling.",
+  "三首歌组成的概念 EP，把海风、失眠与情绪回响写进合成器与鼓点里。":
+    "A three-track concept EP turning sea breeze, insomnia, and emotional echoes into synths and drums.",
+  "结合舞台排练、动作设计与影像剪辑的短片式演出企划。":
+    "A short-film style performance concept combining rehearsal, movement design, and visual editing.",
+  "主打单曲围绕夜色、告别与重新出发展开，用轻电子与抒情旋律构建深夜氛围。":
+    "A lead single about nightfall, farewells, and new beginnings, built with soft electronics and a cinematic emotional arc.",
+  "《Midnight Echo》是当前阶段的代表作品，编曲上用呼吸感更强的节奏、逐层推进的合成器与留白感的人声段落，去表达夜晚里迟迟没有说出口的话。":
+    "Midnight Echo is the anchor release of this phase. It pairs breathing room in the arrangement with gradually rising synth layers and intimate vocal phrasing, creating the feeling of a conversation that almost happened but stayed in the air.",
+  "以 live session 的方式重组代表作品，把排练室、现场收音和镜头运动统一到一套情绪节奏里。":
+    "A live-session reinterpretation of signature songs, designed to preserve breath, distance, and emotional timing on camera.",
+  "这一组内容更强调现场呼吸感与人与空间的距离感：不是追求大而满的表演，而是在更克制的编排里，让人声、乐手和画面都留下足够的情绪余韵。":
+    "This session focuses on atmosphere rather than excess. The arrangement, room sound, and camera movement all work together so the performance feels close, spacious, and emotionally deliberate instead of overstated.",
+  "三首歌组成的概念 EP，把海风、失眠、回望与重启写进合成器、鼓点和低饱和色彩里。":
+    "A three-track concept EP that transforms sea breeze, insomnia, reflection, and quiet restart into synth textures, restrained rhythm, and muted color.",
+  "《Sea Fog》像一段完整的夜间旅程：从第一首歌的轻微不安，到第二首歌的自我对话，再到最后一首歌的重新出发，整张 EP 更像一场带有电影镜头感的城市漫游。":
+    "Sea Fog unfolds like a complete night journey: the first track carries subtle unease, the second becomes an inward conversation, and the final song opens toward a quieter restart. The EP feels more like a cinematic city drift than a conventional playlist.",
+  "把排练、动作设计、镜头语言与舞台灯光整合成一支短片式演出企划。":
+    "A short-film performance concept combining rehearsal footage, movement design, camera language, and stage lighting.",
+  "这组视觉内容延续了 LINA 目前的舞台气质：安静、冷感、克制，但又保留足够明显的情绪起伏。它既是演出片段，也能作为单曲传播和社交平台内容的延展母体。":
+    "This visual project extends LINA's current stage language: quiet, cool, and restrained, yet still charged with visible emotional movement. It works both as performance footage and as a source layer for single promotion and social content.",
+  "电子流行、抒情舞曲、夜色叙事":
+    "Electro-pop, melodic dance-pop, and nocturnal storytelling",
+  "剧场专场、live house、品牌活动与影像化现场":
+    "Theater sets, live houses, brand events, and filmed live performances",
+  "演出邀约、合作写歌、品牌联动与视觉企划":
+    "Booking, co-writing, brand collaborations, and visual direction",
+  "这里收录近阶段的艺人照片、live session 截图与舞台视觉，方便作为媒体包、演出海报和社交平台内容使用。":
+    "A curated collection of recent artist portraits, live session stills, and stage visuals prepared for press kits, posters, and social storytelling.",
+  "从排练室、海边、公路与冷暖光影提炼视觉气质，持续延展 LINA 的现场美学与内容封面语言。":
+    "Visual references drawn from rehearsal rooms, coastlines, highways, and shifting cool-to-warm light, continuing the atmosphere of LINA's stage and cover language.",
+};
 
 const nameMap = {
   张: "Zhang",
@@ -158,6 +280,9 @@ function translateSentence(text = "", fallback = "") {
   if (!text) return fallback;
   if (!hasChinese(text)) return normalizeEnglish(text);
 
+  const exact = exactSentenceMap[text.trim()];
+  if (exact) return exact;
+
   const replaced = replacePhrases(
     text
       .replace(/，/g, ", ")
@@ -185,6 +310,8 @@ function transliterateName(name = "") {
 function translateShortLabel(text = "", fallback = "") {
   if (!text) return fallback;
   if (!hasChinese(text)) return normalizeEnglish(text).replace(/[.]$/, "");
+  const exact = exactLabelMap[text.trim()] || exactSentenceMap[text.trim()];
+  if (exact) return normalizeEnglish(exact).replace(/[.]$/, "");
   const converted = replacePhrases(text).replace(/[\u4e00-\u9fa5]/g, "").replace(/\s+/g, " ").trim();
   if (!converted) return fallback;
   return normalizeEnglish(converted).replace(/[.]$/, "");
@@ -192,12 +319,12 @@ function translateShortLabel(text = "", fallback = "") {
 
 function translateAbout(about) {
   const fallback =
-    "I focus on product design, information architecture, and user experience, turning complex requirements into clear and actionable digital workflows.";
+    "An indie singer-songwriter shaping electro-pop songs, cinematic visuals, and immersive live moments.";
   return translateSentence(about, fallback);
 }
 
 function translateTagline(tagline) {
-  const fallback = "Product designer focused on clarity, systems, and quality execution.";
+  const fallback = "Indie singer-songwriter focused on electro-pop, emotion, and live storytelling.";
   return translateSentence(tagline, fallback);
 }
 

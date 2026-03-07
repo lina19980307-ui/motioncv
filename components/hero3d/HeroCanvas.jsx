@@ -4,13 +4,15 @@ import { ContactShadows, Environment } from "@react-three/drei";
 import { ACESFilmicToneMapping, SRGBColorSpace } from "three";
 import ComputerModel from "./ComputerModel";
 
-export default function HeroCanvas({ config }) {
+export default function HeroCanvas({ config, onModelClick, interactionPreset, interactionToken }) {
   const { canvas, lights, model } = config;
   return (
     <Canvas
       dpr={canvas.dpr}
       shadows
       camera={canvas.camera}
+      flat={false}
+      linear={false}
       gl={{ antialias: true, alpha: true }}
       onCreated={({ gl }) => {
         if (canvas?.renderer?.toneMapping === "aces") {
@@ -18,6 +20,7 @@ export default function HeroCanvas({ config }) {
         }
         gl.toneMappingExposure = canvas?.renderer?.exposure ?? 1;
         gl.outputColorSpace = SRGBColorSpace;
+        gl.setClearColor(0x000000, 0);
       }}
       className="hero-canvas"
       style={{ background: "transparent" }}
@@ -47,11 +50,18 @@ export default function HeroCanvas({ config }) {
             background={false}
           />
         )}
-        <ComputerModel modelConfig={model} />
+        <ComputerModel
+          key={model.assetPath}
+          modelConfig={model}
+          onModelClick={onModelClick}
+          interactionPreset={interactionPreset}
+          interactionToken={interactionToken}
+        />
         <ContactShadows
           position={lights.contactShadow.position}
           blur={lights.contactShadow.blur}
           opacity={lights.contactShadow.opacity}
+          resolution={lights.contactShadow.resolution}
           scale={lights.contactShadow.scale}
           far={lights.contactShadow.far}
         />

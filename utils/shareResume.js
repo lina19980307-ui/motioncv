@@ -37,6 +37,7 @@ export function decodeResumeData(encoded) {
 }
 
 const SNAPSHOT_PREFIX = "motioncv:resume:";
+const EDITOR_DRAFT_KEY = "motioncv:editor:draft";
 
 function clearOldSnapshotsExcept(slug) {
   if (typeof window === "undefined") return;
@@ -113,4 +114,15 @@ export function loadResumeSnapshot(slug) {
     }
   }
   return null;
+}
+
+export function loadEditorDraft() {
+  if (typeof window === "undefined") return null;
+  const raw = window.localStorage.getItem(EDITOR_DRAFT_KEY);
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
 }

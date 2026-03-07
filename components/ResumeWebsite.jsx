@@ -1,6 +1,10 @@
 import Image from "next/image";
 import dynamic from "next/dynamic";
 import { useEffect, useMemo, useRef, useState } from "react";
+import ArcMediaCarousel from "./ArcMediaCarousel";
+import ModelInteractionBurst from "./hero3d/ModelInteractionBurst";
+import { MODEL_CLICK_PRESET_ORDER } from "./hero3d/modelInteraction";
+import useInteractionAudio from "./hero3d/useInteractionAudio";
 import CardStack from "./CardStack";
 import { parseItems } from "../utils/resumeTransform";
 
@@ -33,17 +37,6 @@ function ChevronIcon({ expanded }) {
   );
 }
 
-function buildHeroArcMedia(items, count = 5) {
-  if (!Array.isArray(items) || items.length === 0) return [];
-  return Array.from({ length: count }, (_, index) => {
-    const source = items[index % items.length];
-    return {
-      ...source,
-      _arcId: `arc-${index}`,
-    };
-  });
-}
-
 export default function ResumeWebsite({
   data,
   lang = "zh",
@@ -52,9 +45,10 @@ export default function ResumeWebsite({
   heroFullscreen = false,
   hideTopHeader = false,
   heroModelConfig = null,
+  heroInteractionTheme = "light",
+  heroInteractionAnchorY = "70%",
 }) {
   const experiences = parseItems(data.experiences, ["period", "role", "company", "detail"]);
-  const awards = parseItems(data.awards, ["period", "title", "issuer", "detail"]);
   const fallbackProjects = parseItems(data.projects, ["name", "detail"]);
   const projectItems = Array.isArray(data.projectItems) && data.projectItems.length > 0
     ? data.projectItems
@@ -83,12 +77,11 @@ export default function ResumeWebsite({
           about: "About",
           exp: "Experience",
           skills: "Skills",
-          awards: "Awards & Honors",
+          awards: "Banner",
           projects: "Projects",
           noExp: "No experience added yet.",
           noProject: "No projects added yet.",
-          noAwards: "No awards added yet.",
-          tagline: "Your positioning tagline",
+          noAwards: "No banner added yet.",
           intro: "Introduce yourself here.",
           role: "Role",
           project: "Project",
@@ -102,12 +95,11 @@ export default function ResumeWebsite({
           about: "关于我",
           exp: "工作经历",
           skills: "技能",
-          awards: "奖项与荣誉",
+          awards: "Banner",
           projects: "项目经历",
           noExp: "暂未添加工作经历。",
           noProject: "暂未添加项目。",
-          noAwards: "暂未添加奖项与荣誉。",
-          tagline: "你的个人定位语",
+          noAwards: "暂未添加 Banner。",
           intro: "请填写自我介绍。",
           role: "职位",
           project: "项目",
@@ -121,7 +113,7 @@ export default function ResumeWebsite({
   const [expandedProjectMap, setExpandedProjectMap] = useState({});
   const [activeMediaIndex, setActiveMediaIndex] = useState(0);
   const [hoveredMediaIndex, setHoveredMediaIndex] = useState(null);
-  const [heroArcAnim, setHeroArcAnim] = useState({ step: 0, phase: 0, flipping: false });
+  const [interactionState, setInteractionState] = useState({ token: 0, comboIndex: -1 });
   const [talkName, setTalkName] = useState("");
   const [talkEmail, setTalkEmail] = useState("");
   const [talkMessage, setTalkMessage] = useState("");
@@ -180,26 +172,6 @@ export default function ResumeWebsite({
     return <h2 className="section-title wave-item">{title}</h2>;
   };
 
-  const renderHeroArcAsset = (item, side) => {
-    if (item.type === "image") {
-      return (
-        <Image
-          src={item.url}
-          alt={item.name || `hero media ${side}`}
-          fill
-          sizes="150px"
-          unoptimized
-          className="hero-arc-media-inner"
-        />
-      );
-    }
-    return (
-      <video autoPlay loop muted playsInline className="hero-arc-media-inner">
-        <source src={item.url} />
-      </video>
-    );
-  };
-
   const profileRows = [
     { label: "POSITION", value: data.profilePosition || "" },
     { label: "EMAIL", value: data.profileEmail || data.email || "" },
@@ -208,70 +180,24 @@ export default function ResumeWebsite({
     { label: (data.profileCustom3Title || "").toUpperCase(), value: data.profileCustom3Value || "" },
   ].filter((row) => row.label && row.value);
   const heroName = data.name || "Your Name";
-  const heroTitle = lang === "en" ? `Hi, I'm ${heroName}` : `Hi, I'm ${heroName}`;
-  const heroArcMedia = useMemo(() => buildHeroArcMedia(mediaItems, 6), [mediaItems]);
-  const heroArcLayout = useMemo(() => {
-    if (!heroArcMedia.length) return [];
-    const total = heroArcMedia.length;
-    const shift = heroArcAnim.step + heroArcAnim.phase;
-    return heroArcMedia.map((item, index) => {
-      let relative = index - shift;
-      while (relative < -3.1) relative += total;
-      while (relative > 3.1) relative -= total;
-      const absRelative = Math.abs(relative);
-      const x = relative * 242;
-      const y = -136 + Math.pow(absRelative, 2) * 30;
-      const scale = Math.max(0.74, 1.08 - absRelative * 0.19);
-      const rotate = relative * 11;
-      const opacity =
-        absRelative > 2.25
-          ? Math.max(0, 0.6 - (absRelative - 2.25) * 1.35)
-          : Math.max(0.6, 1 - absRelative * 0.18);
-      const zIndex = Math.round(120 - absRelative * 36);
-      return {
-        ...item,
-        _layout: { x, y, scale, rotate, opacity, zIndex, absRelative },
-      };
-    });
-  }, [heroArcMedia, heroArcAnim.step, heroArcAnim.phase]);
+  const heroGreeting = "Hi, I'm";
+  const awardsMediaItems = useMemo(
+    () => mediaItems.filter((item) => item?.url && (item.type === "image" || item.type === "video")),
+    [mediaItems]
+  );
+  const playInteractionAudio = useInteractionAudio(data.interactionAudio || null);
+  const interactionPreset = useMemo(
+    () => MODEL_CLICK_PRESET_ORDER[Math.max(interactionState.comboIndex, 0)] || MODEL_CLICK_PRESET_ORDER[0],
+    [interactionState.comboIndex]
+  );
 
-  useEffect(() => {
-    if (!heroFullscreen || heroArcMedia.length === 0) return undefined;
-    let rafId = 0;
-    let lastPaint = 0;
-    const moveMs = 2200;
-    const flipMs = 1000;
-    const cycleMs = moveMs + flipMs;
-    const start = performance.now();
-
-    const update = (now) => {
-      if (now - lastPaint >= 40) {
-        const elapsedMs = now - start;
-        const cycleIndex = Math.floor(elapsedMs / cycleMs);
-        const cycleElapsed = elapsedMs % cycleMs;
-        if (cycleElapsed < moveMs) {
-          setHeroArcAnim({
-            step: cycleIndex % heroArcMedia.length,
-            phase: cycleElapsed / moveMs,
-            flipping: false,
-          });
-        } else {
-          setHeroArcAnim({
-            step: cycleIndex % heroArcMedia.length,
-            phase: 1,
-            flipping: true,
-          });
-        }
-        lastPaint = now;
-      }
-      rafId = window.requestAnimationFrame(update);
-    };
-
-    rafId = window.requestAnimationFrame(update);
-    return () => {
-      window.cancelAnimationFrame(rafId);
-    };
-  }, [heroFullscreen, heroArcMedia.length]);
+  const onHeroModelClick = () => {
+    playInteractionAudio();
+    setInteractionState((prev) => ({
+      token: prev.token + 1,
+      comboIndex: (prev.comboIndex + 1) % MODEL_CLICK_PRESET_ORDER.length,
+    }));
+  };
 
   useEffect(() => {
     if (!heroFullscreen) return undefined;
@@ -319,13 +245,23 @@ export default function ResumeWebsite({
       if (sections.length < 2) return;
 
       const viewportAnchor = window.innerHeight * 0.24;
-      const currentIndex = sections.reduce(
-        (best, section, index) => {
-          const distance = Math.abs(section.getBoundingClientRect().top - viewportAnchor);
-          return distance < best.distance ? { index, distance } : best;
-        },
-        { index: 0, distance: Number.POSITIVE_INFINITY }
-      ).index;
+      const sectionRects = sections.map((section) => section.getBoundingClientRect());
+      const anchoredIndex = sectionRects.findIndex((rect) => rect.top <= viewportAnchor && rect.bottom >= viewportAnchor);
+      const currentIndex =
+        anchoredIndex >= 0
+          ? anchoredIndex
+          : sections.reduce(
+              (best, section, index) => {
+                const distance = Math.abs(section.getBoundingClientRect().top - viewportAnchor);
+                return distance < best.distance ? { index, distance } : best;
+              },
+              { index: 0, distance: Number.POSITIVE_INFINITY }
+            ).index;
+      const currentRect = sectionRects[currentIndex];
+      const isLongSection = currentIndex > 0 && currentRect && currentRect.height > window.innerHeight * 1.02;
+      if (isLongSection) {
+        return;
+      }
 
       const nextIndex = event.deltaY > 0 ? Math.min(sections.length - 1, currentIndex + 1) : Math.max(0, currentIndex - 1);
       if (nextIndex === currentIndex) {
@@ -379,7 +315,7 @@ export default function ResumeWebsite({
     );
     waveSections.forEach((section) => observer.observe(section));
     return () => observer.disconnect();
-  }, [awards.length, customSections.length, experiences.length, projectItems.length, skills.length]);
+  }, [awardsMediaItems.length, customSections.length, experiences.length, projectItems.length, skills.length]);
 
   return (
     <section
@@ -391,47 +327,52 @@ export default function ResumeWebsite({
           id={makeId("home")}
           data-snap-section="true"
           data-wave-section="true"
-          className={`wave-section ${heroFullscreen ? "relative flex w-full min-h-[86vh] flex-col items-center justify-center overflow-hidden pb-0 text-center" : "pb-10"} ${getJumpableClass()}`}
+          className={`wave-section ${heroFullscreen ? "hero-stage relative flex w-full min-h-[92vh] flex-col items-center justify-center overflow-hidden pb-16 text-center md:min-h-[96vh] md:pb-20" : "pb-10"} ${getJumpableClass()}`}
           onClick={() => jumpToEditor("basic")}
         >
           {heroFullscreen && heroModelConfig ? (
             <div className="share-hero-3d absolute inset-0 z-0">
-              <HeroCanvas config={heroModelConfig} />
+              <HeroCanvas
+                config={heroModelConfig}
+                onModelClick={onHeroModelClick}
+                interactionPreset={interactionPreset}
+                interactionToken={interactionState.token}
+              />
             </div>
           ) : null}
 
-          {heroFullscreen && !heroModelConfig && heroArcLayout.length > 0 && (
-            <div className="hero-arc-stage pointer-events-none absolute inset-0 z-0 hidden md:block">
-              {heroArcLayout.map((item) => {
-                return (
-                  <div
-                    key={item._arcId}
-                    className={`hero-arc-card ${heroArcAnim.flipping ? "hero-arc-card--flip-all" : ""}`}
-                    style={{
-                      transform: `translate3d(${item._layout.x}px, ${item._layout.y}px, 0) scale(${item._layout.scale}) rotate(${item._layout.rotate}deg)`,
-                      opacity: item._layout.opacity,
-                      zIndex: item._layout.zIndex,
-                    }}
-                  >
-                    <div className="hero-arc-flip">
-                      <div className="hero-arc-face hero-arc-face--front">{renderHeroArcAsset(item, "front")}</div>
-                      <div className="hero-arc-face hero-arc-face--back">{renderHeroArcAsset(item, "back")}</div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+          {heroFullscreen && heroModelConfig ? (
+            <ModelInteractionBurst
+              interactionToken={interactionState.token}
+              preset={interactionPreset}
+              themeVariant={heroInteractionTheme}
+              anchorY={heroInteractionAnchorY}
+            />
+          ) : null}
+
+          {heroFullscreen && !heroModelConfig && mediaItems.length > 0 && (
+            <ArcMediaCarousel items={mediaItems} className="pointer-events-none absolute inset-0 z-0 hidden md:block" />
           )}
 
-          <h1
-            className={`wave-item relative z-20 ${heroFullscreen ? "max-w-4xl text-5xl font-semibold tracking-tight md:text-7xl" : "text-5xl font-semibold tracking-tight md:text-7xl"}`}
-            style={{ "--wave-delay": "0ms" }}
-          >
-            {heroFullscreen ? heroTitle : heroName}
-          </h1>
-          <p className="wave-item relative z-20 mt-4 text-lg font-light tracking-[0.01em] text-[var(--muted)]" style={{ "--wave-delay": "120ms" }}>
-            {data.tagline || labels.tagline}
-          </p>
+          {heroFullscreen ? (
+            <div className="hero-copy-shell pointer-events-none absolute inset-x-0 top-[calc(16vh+40px)] z-20 px-4 md:top-[calc(11vh+40px)]">
+              <div className="wave-item hero-copy-panel" style={{ "--wave-delay": "0ms" }}>
+                <h1 className="hero-copy-title">
+                  <span className="hero-copy-lead">{heroGreeting}</span>{" "}
+                  <span className="hero-copy-name">{heroName}</span>
+                </h1>
+              </div>
+            </div>
+          ) : (
+            <>
+              <h1
+                className="wave-item relative z-20 text-5xl font-semibold tracking-tight md:text-7xl"
+                style={{ "--wave-delay": "0ms" }}
+              >
+                {heroName}
+              </h1>
+            </>
+          )}
 
           {!heroFullscreen && mediaItems.length > 0 && (
             <div className="mt-8" onClick={(event) => event.stopPropagation()}>
@@ -566,6 +507,12 @@ export default function ResumeWebsite({
               </div>
             )}
 
+            {data.about && (
+              <p className="mt-6 max-w-2xl text-base leading-8 text-[var(--muted)]">
+                {data.about}
+              </p>
+            )}
+
             {skills.length > 0 && (
               <div id={makeId("skills")} className="mt-8">
                 <h3 className="text-2xl font-semibold">{labels.skills}</h3>
@@ -610,7 +557,7 @@ export default function ResumeWebsite({
                     {index < experiences.length - 1 && (
                       <span className="timeline-link absolute bottom-[-2rem] left-1/2 top-[17px] w-px -translate-x-1/2 border-l border-dashed border-[var(--line)]" />
                     )}
-                    <span className="timeline-dot absolute left-1/2 top-[10px] h-3.5 w-3.5 -translate-x-1/2 rounded-full border-2 border-[var(--line)] bg-[var(--panel)]" />
+                    <span className="timeline-dot absolute left-1/2 top-[10px] h-3.5 w-3.5 -translate-x-1/2 rounded-full border-2 border-[rgba(154,158,168,0.38)] bg-[rgba(255,255,255,0.42)]" />
                   </div>
                   <div className="min-w-0">
                     {item.period && (
@@ -634,7 +581,7 @@ export default function ResumeWebsite({
         )}
       </div>
 
-      {awards.length > 0 && (
+      {awardsMediaItems.length > 0 && (
         <div
           id={makeId("awards")}
           data-snap-section="true"
@@ -643,37 +590,13 @@ export default function ResumeWebsite({
           onClick={() => jumpToEditor("awards")}
         >
           {renderSectionTitle(labels.awards)}
-          <div className={`wave-item relative mt-8 w-full pl-0 ${heroFullscreen ? "mx-auto max-w-3xl" : ""}`} style={{ "--wave-delay": "90ms" }}>
-            <div className="space-y-8">
-              {awards.map((item, index) => (
-                <div
-                  key={`${item.title}-${index}`}
-                  className="timeline-item wave-subitem relative grid grid-cols-[24px_1fr] gap-5 md:gap-6"
-                  style={{ "--wave-index": index }}
-                >
-                  <div className="timeline-axis relative self-stretch">
-                    {index > 0 && (
-                      <span className="timeline-link absolute left-1/2 top-[-2rem] h-[49px] w-px -translate-x-1/2 border-l border-dashed border-[var(--line)]" />
-                    )}
-                    {index < awards.length - 1 && (
-                      <span className="timeline-link absolute bottom-[-2rem] left-1/2 top-[17px] w-px -translate-x-1/2 border-l border-dashed border-[var(--line)]" />
-                    )}
-                    <span className="timeline-dot absolute left-1/2 top-[10px] h-3.5 w-3.5 -translate-x-1/2 rounded-full border-2 border-[var(--line)] bg-[var(--panel)]" />
-                  </div>
-                  <div className="min-w-0">
-                    {item.period && (
-                      <p className="mb-2 whitespace-nowrap text-base font-semibold tracking-[0.02em] text-[var(--muted)] md:text-lg">
-                        {item.period}
-                      </p>
-                    )}
-                    <article className="timeline-card motion-card soft-panel rounded-xl p-5" tabIndex={0}>
-                      <h3 className="text-xl font-medium">{item.title}</h3>
-                      <p className="mt-1 text-sm text-[var(--muted)]">{item.issuer}</p>
-                      <p className="mt-2 text-[var(--muted)]">{item.detail}</p>
-                    </article>
-                  </div>
-                </div>
-              ))}
+          <div className={heroFullscreen ? "awards-carousel-breakout" : ""}>
+            <div className="wave-item mt-10 w-full" style={{ "--wave-delay": "90ms" }}>
+              <ArcMediaCarousel
+                items={awardsMediaItems}
+                variant={heroFullscreen ? "wide" : "default"}
+                className={`awards-arc-carousel ${heroFullscreen ? "awards-arc-carousel--fullscreen h-[360px] md:h-[460px]" : "h-[280px] md:h-[360px]"}`}
+              />
             </div>
           </div>
         </div>
@@ -705,7 +628,7 @@ export default function ResumeWebsite({
                       {index < projectItems.length - 1 && (
                         <span className="timeline-link absolute bottom-[-2rem] left-1/2 top-[17px] w-px -translate-x-1/2 border-l border-dashed border-[var(--line)]" />
                       )}
-                      <span className="timeline-dot absolute left-1/2 top-[10px] h-3.5 w-3.5 -translate-x-1/2 rounded-full border-2 border-[var(--line)] bg-[var(--panel)]" />
+                      <span className="timeline-dot absolute left-1/2 top-[10px] h-3.5 w-3.5 -translate-x-1/2 rounded-full border-2 border-[rgba(154,158,168,0.38)] bg-[rgba(255,255,255,0.42)]" />
                     </div>
                     <div className="min-w-0">
                       {project.period && (
@@ -784,7 +707,11 @@ export default function ResumeWebsite({
             onClick={() => jumpToEditor("customSections")}
           >
             {renderSectionTitle(section.title || (lang === "en" ? "Custom Section" : "自定义板块"))}
-            {section.content && <p className="wave-item section-copy mt-6" style={{ "--wave-delay": "90ms" }}>{section.content}</p>}
+            {section.content && (
+              <p className="wave-item section-copy section-copy-centered mt-6" style={{ "--wave-delay": "90ms" }}>
+                {section.content}
+              </p>
+            )}
 
             {section.mediaItems.length > 0 && (
               <>
