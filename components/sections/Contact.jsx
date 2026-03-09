@@ -8,32 +8,32 @@ export default function Contact() {
       </Reveal>
       <Reveal delay={100}>
         <p className="section-copy">
-          欢迎联系合作或交流设计系统、产品体验与简历优化相关问题。
+          欢迎通过占位联系方式测试页面排版，发布前请替换为你自己的真实联系方式。
         </p>
       </Reveal>
       <Reveal delay={180}>
         <div className="mt-10 grid gap-3 sm:max-w-xl">
           <a
-            href="mailto:hello@motioncv.design"
+            href="mailto:hello@example.com"
             className="rounded-xl border bg-white/70 px-5 py-4 text-sm tracking-[0.08em] text-[var(--muted)] transition hover:text-[var(--text)]"
           >
-            Email · hello@motioncv.design
+            Email · hello@example.com
           </a>
           <a
-            href="https://github.com/motioncv"
+            href="https://example.com/portfolio"
             target="_blank"
             rel="noreferrer"
             className="rounded-xl border bg-white/70 px-5 py-4 text-sm tracking-[0.08em] text-[var(--muted)] transition hover:text-[var(--text)]"
           >
-            GitHub · github.com/motioncv
+            Website · example.com/portfolio
           </a>
           <a
-            href="https://www.linkedin.com/in/motioncv"
+            href="https://example.com/social"
             target="_blank"
             rel="noreferrer"
             className="rounded-xl border bg-white/70 px-5 py-4 text-sm tracking-[0.08em] text-[var(--muted)] transition hover:text-[var(--text)]"
           >
-            LinkedIn · linkedin.com/in/motioncv
+            Social · example.com/social
           </a>
         </div>
       </Reveal>

@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000">
+  <rect width="1600" height="1000" rx="88" fill="#eef0f5"/>
+  <circle cx="380" cy="256" r="92" fill="#dde4ef"/>
+  <circle cx="800" cy="190" r="120" fill="#d6ddeb"/>
+  <circle cx="1220" cy="256" r="92" fill="#dde4ef"/>
+  <rect x="188" y="432" width="1224" height="312" rx="52" fill="#d8dfeb"/>
+  <text x="800" y="912" fill="#737b87" font-family="Arial, sans-serif" font-size="58" text-anchor="middle">
+    Banner Placeholder
+  </text>
+</svg>

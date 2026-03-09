@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900">
+  <rect width="1200" height="900" rx="72" fill="#ecf3fb"/>
+  <rect x="140" y="124" width="920" height="520" rx="36" fill="#d8e5f4"/>
+  <path d="M190 578c116-68 214-102 294-102 88 0 176 42 264 42 78 0 162-26 252-82" fill="none" stroke="#98b6d8" stroke-width="28" stroke-linecap="round"/>
+  <text x="140" y="760" fill="#66707d" font-family="Arial, sans-serif" font-size="62">Project Placeholder</text>
+  <text x="140" y="830" fill="#8a929c" font-family="Arial, sans-serif" font-size="32">Blue Hour live session card</text>
+</svg>

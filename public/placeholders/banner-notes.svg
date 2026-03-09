@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000">
+  <rect width="1600" height="1000" rx="88" fill="#f3f1f6"/>
+  <circle cx="470" cy="640" r="74" fill="#d7d0e3"/>
+  <rect x="514" y="264" width="28" height="304" rx="14" fill="#c8bfd8"/>
+  <path d="M542 280l294 60v36l-294-60z" fill="#cfc7dd"/>
+  <circle cx="884" cy="554" r="62" fill="#d7d0e3"/>
+  <rect x="920" y="220" width="22" height="270" rx="11" fill="#c8bfd8"/>
+  <path d="M942 238l194 44v32l-194-44z" fill="#cfc7dd"/>
+  <text x="800" y="912" fill="#7d7887" font-family="Arial, sans-serif" font-size="58" text-anchor="middle">
+    Banner Placeholder
+  </text>
+</svg>

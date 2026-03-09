@@ -2,22 +2,22 @@ import Reveal from "../Reveal";
 
 const items = [
   {
-    role: "Lead Product Designer",
-    company: "Atelier Labs",
-    period: "2022 - Present",
-    detail: "主导设计系统重构并定义跨端组件规范，显著提升产品一致性。",
+    role: "Featured Performer",
+    company: "Studio Residency",
+    period: "2024 - Present",
+    detail: "负责现场内容编排、媒体发布节奏与阶段性作品展示。",
   },
   {
-    role: "Senior Product Designer",
-    company: "Northbound Studio",
-    period: "2019 - 2022",
-    detail: "负责 B2B 核心流程改版，完成关键路径体验优化与可用性验证。",
+    role: "Creative Collaborator",
+    company: "Independent Project",
+    period: "2022 - 2024",
+    detail: "围绕视觉内容、演出片段与作品传播做协作开发与展示。",
   },
   {
-    role: "Product Designer",
-    company: "Pixel Collective",
-    period: "2017 - 2019",
-    detail: "参与从 0 到 1 的产品设计与品牌视觉体系搭建，推动首版上线。",
+    role: "Project Builder",
+    company: "Sample Portfolio",
+    period: "2020 - 2022",
+    detail: "整理公开作品、模块化信息与交互体验，形成完整展示页面。",
   },
 ];
 

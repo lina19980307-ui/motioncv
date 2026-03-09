@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900">
+  <rect width="1200" height="900" rx="72" fill="#f5f1ed"/>
+  <rect x="180" y="180" width="840" height="420" rx="42" fill="#e5ddd6"/>
+  <circle cx="360" cy="390" r="72" fill="#cfc2b7"/>
+  <circle cx="600" cy="390" r="72" fill="#cfc2b7"/>
+  <circle cx="840" cy="390" r="72" fill="#cfc2b7"/>
+  <text x="120" y="730" fill="#706862" font-family="Arial, sans-serif" font-size="62">Project Placeholder</text>
+  <text x="120" y="804" fill="#958b83" font-family="Arial, sans-serif" font-size="32">Afterglow stage film card</text>
+</svg>

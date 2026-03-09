@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900">
+  <rect width="1200" height="900" rx="72" fill="#f2f4ef"/>
+  <path d="M0 620c112-68 222-104 332-104 144 0 274 70 410 70 142 0 270-68 458-166v480H0z" fill="#d9e0d8"/>
+  <path d="M0 520c136-94 256-138 382-138 142 0 258 54 392 54 136 0 278-56 426-166" fill="none" stroke="#a9b9ad" stroke-width="22" stroke-linecap="round"/>
+  <text x="120" y="176" fill="#66706a" font-family="Arial, sans-serif" font-size="62">Project Placeholder</text>
+  <text x="120" y="250" fill="#8d958e" font-family="Arial, sans-serif" font-size="32">Sea Fog EP visual card</text>
+</svg>

@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900">
+  <rect width="1200" height="900" rx="72" fill="#eef2f7"/>
+  <circle cx="930" cy="160" r="96" fill="#cfd9e7"/>
+  <path d="M120 640c102-118 220-176 354-176 178 0 250 122 396 122 80 0 156-28 250-94v228H120z" fill="#d6dee9"/>
+  <text x="120" y="176" fill="#646c77" font-family="Arial, sans-serif" font-size="62">Project Placeholder</text>
+  <text x="120" y="250" fill="#8a929c" font-family="Arial, sans-serif" font-size="32">Midnight Echo visual card</text>
+</svg>

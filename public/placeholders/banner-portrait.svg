@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000">
+  <rect width="1600" height="1000" rx="88" fill="#f3f2ef"/>
+  <rect x="240" y="146" width="430" height="708" rx="64" fill="#e4dfd8"/>
+  <rect x="760" y="220" width="600" height="92" rx="24" fill="#e0e6ed"/>
+  <rect x="760" y="376" width="510" height="68" rx="22" fill="#e7ebf1"/>
+  <rect x="760" y="500" width="552" height="68" rx="22" fill="#e7ebf1"/>
+  <rect x="760" y="624" width="448" height="68" rx="22" fill="#e7ebf1"/>
+  <text x="800" y="910" fill="#7c827d" font-family="Arial, sans-serif" font-size="58" text-anchor="middle">
+    Banner Placeholder
+  </text>
+</svg>

@@ -1,5 +1,5 @@
-const TEMPLATE_VERSION = "lina-singer-20260307";
-const MEDIA_BASE = "/weidong";
+const TEMPLATE_VERSION = "lina-singer-20260308-clean";
+const MEDIA_BASE = "/placeholders";
 export const defaultPublishedSlug = "lina-live";
 
 const mediaItem = (name) => ({
@@ -31,7 +31,7 @@ export const defaultResumeTemplate = {
         "主打单曲围绕夜色、告别与重新出发展开，用轻电子与抒情旋律构建深夜氛围。",
       details:
         "《Midnight Echo》是当前阶段的代表作品，编曲上用呼吸感更强的节奏、逐层推进的合成器与留白感的人声段落，去表达夜晚里迟迟没有说出口的话。",
-      media: mediaItem("eco.gif"),
+      media: mediaItem("project-midnight.svg"),
     },
     {
       period: "2025",
@@ -41,7 +41,7 @@ export const defaultResumeTemplate = {
         "以 live session 的方式重组代表作品，把排练室、现场收音和镜头运动统一到一套情绪节奏里。",
       details:
         "这一组内容更强调现场呼吸感与人与空间的距离感：不是追求大而满的表演，而是在更克制的编排里，让人声、乐手和画面都留下足够的情绪余韵。",
-      media: mediaItem("lift_real_train.gif"),
+      media: mediaItem("project-bluehour.svg"),
     },
     {
       period: "2024",
@@ -51,7 +51,7 @@ export const defaultResumeTemplate = {
         "三首歌组成的概念 EP，把海风、失眠、回望与重启写进合成器、鼓点和低饱和色彩里。",
       details:
         "《Sea Fog》像一段完整的夜间旅程：从第一首歌的轻微不安，到第二首歌的自我对话，再到最后一首歌的重新出发，整张 EP 更像一场带有电影镜头感的城市漫游。",
-      media: mediaItem("metadrive_wide.gif"),
+      media: mediaItem("project-seafog.svg"),
     },
     {
       period: "2024",
@@ -61,7 +61,7 @@ export const defaultResumeTemplate = {
         "把排练、动作设计、镜头语言与舞台灯光整合成一支短片式演出企划。",
       details:
         "这组视觉内容延续了 LINA 目前的舞台气质：安静、冷感、克制，但又保留足够明显的情绪起伏。它既是演出片段，也能作为单曲传播和社交平台内容的延展母体。",
-      media: mediaItem("wm_survey.png"),
+      media: mediaItem("project-afterglow.svg"),
     },
   ],
   profilePosition: "独立唱作歌手 / Live Performer",
@@ -73,14 +73,14 @@ export const defaultResumeTemplate = {
   profileCustom3Title: "合作",
   profileCustom3Value: "演出邀约、合作写歌、品牌联动与视觉企划",
   interactionAudio: null,
-  aboutMedia: mediaItem("me.png"),
+  aboutMedia: mediaItem("portrait-placeholder.svg"),
   mediaItems: [
-    mediaItem("lift_real_train.gif"),
-    mediaItem("eco.gif"),
-    mediaItem("metadrive_wide.gif"),
-    mediaItem("wm_survey.png"),
-    mediaItem("diff_rl.png"),
-    mediaItem("citations.jpeg"),
+    mediaItem("banner-stage.svg"),
+    mediaItem("banner-portrait.svg"),
+    mediaItem("banner-wave.svg"),
+    mediaItem("banner-notes.svg"),
+    mediaItem("banner-poster.svg"),
+    mediaItem("banner-lights.svg"),
   ],
   customSections: [
     {
@@ -88,10 +88,10 @@ export const defaultResumeTemplate = {
       content:
         "这里收录近阶段的艺人照片、live session 截图与舞台视觉，方便作为媒体包、演出海报和社交平台内容使用。",
       mediaItems: [
-        mediaItem("wm_survey.png"),
-        mediaItem("diff_rl.png"),
-        mediaItem("bdtalks.png"),
-        mediaItem("citations.jpeg"),
+        mediaItem("banner-poster.svg"),
+        mediaItem("banner-lights.svg"),
+        mediaItem("project-midnight.svg"),
+        mediaItem("project-bluehour.svg"),
       ],
     },
     {
@@ -160,8 +160,6 @@ export function shouldSeedImportedTemplate(saved) {
   const experiences = String(saved.experiences || "").trim();
   const isEmpty = !name && !email && !about && !experiences;
   const isLegacyPlaceholder =
-    name === "张晨" ||
-    email === "hello@motioncv.design" ||
     about.includes("我专注于复杂产品的信息架构与体验优化") ||
     hasLegacyPlaceholderProjects(saved.projectItems);
 

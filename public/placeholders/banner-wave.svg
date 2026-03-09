@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000">
+  <rect width="1600" height="1000" rx="88" fill="#edf3f4"/>
+  <path d="M120 662c196-144 358-216 526-216 182 0 320 96 502 96 144 0 262-52 350-114v472H120z" fill="#d4e0e3"/>
+  <path d="M120 536c204-106 370-160 528-160 196 0 334 90 512 90 118 0 236-30 358-94" fill="none" stroke="#adc6ca" stroke-width="32" stroke-linecap="round"/>
+  <text x="800" y="912" fill="#778387" font-family="Arial, sans-serif" font-size="58" text-anchor="middle">
+    Banner Placeholder
+  </text>
+</svg>
